@@ -34,7 +34,7 @@ names(data)[names(data) == "reading.score"] <- "Reading Score"
 names(data)[names(data) == "writing.score"] <- "Writing Score"
 
 
-Data Overview
+Data Distribution Overview
 
 kable(head(data, 5)) #head(data, 5)
 
@@ -59,3 +59,28 @@ ggplot(data, aes(x = `Writing Score`)) +
   ggtitle("Distribuzione dei Punteggi di Scrittura") +
   xlab("Writing Score") +
   ylab("Frequenza")
+
+
+
+Outlier Elimination Strategy
+
+numeric_cols <- c("Math Score", "Reading Score", "Writing Score") #colonne numeriche
+
+for (col in numeric_cols) {
+  Q1 <- quantile(data[[col]], 0.25, na.rm = TRUE)
+  Q3 <- quantile(data[[col]], 0.75, na.rm = TRUE)
+  IQR_value <- Q3 - Q1
+  
+  # Visualizza i limiti per il debug
+  cat("\nColonna:", col, "\nQ1:", Q1, "\nQ3:", Q3, "\nIQR:", IQR_value, "\n")
+  
+  # Controlla il numero di righe prima e dopo il filtro
+  cat("Righe prima:", nrow(data), "\n")
+  
+  data <- data[data[[col]] >= (Q1 - 1.5 * IQR_value) & 
+                 data[[col]] <= (Q3 + 1.5 * IQR_value), ]
+  
+  cat("Righe dopo:", nrow(data), "\n")
+}
+
+summary(data)

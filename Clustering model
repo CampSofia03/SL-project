@@ -2,8 +2,10 @@ library(tidyverse)
 library(ggplot2)
 library(psych)
 library(knitr)
+library(factoextra) #install.packages("factoextra")
+library(dplyr)
 
-Data Preparation 
+#Data Preparation 
 
 file_path <- file.choose()
 data <- read.csv(file_path)
@@ -16,7 +18,7 @@ table(data$lunch)
 summary(data) # Visualizza i valori
 
 
-Data Cleaning 
+#Data Cleaning 
 
 sum(is.na(data))  # Conta il numero totale di NA nel dataset
 colSums(is.na(data))  # Conta gli NA per ogni colonna
@@ -34,7 +36,7 @@ names(data)[names(data) == "reading.score"] <- "Reading Score"
 names(data)[names(data) == "writing.score"] <- "Writing Score"
 
 
-Data Distribution Overview
+#Data Distribution Overview
 
 kable(head(data, 5)) #head(data, 5)
 
@@ -62,7 +64,7 @@ ggplot(data, aes(x = `Writing Score`)) +
 
 
 
-Outlier Elimination Strategy
+#Outlier Elimination Strategy
 
 numeric_cols <- c("Math Score", "Reading Score", "Writing Score") #colonne numeriche
 
@@ -84,3 +86,111 @@ for (col in numeric_cols) {
 }
 
 summary(data)
+
+
+#Clustering, Visualization, Comparison
+
+data_scaled <- scale(data[, numeric_cols])
+
+# Determinazione del numero ottimale di cluster con il metodo "Elbow"
+set.seed(123)  # Per garantire la riproducibilità
+fviz_nbclust(data_scaled, kmeans, method = "wss") +
+  geom_vline(xintercept = 4, linetype = 2) +
+  labs(subtitle = "Metodo del Gomito (Elbow Method)")
+
+# Esecuzione del clustering K-means
+k <- 5  # Numero di cluster scelto
+set.seed(123)
+km_result <- kmeans(data_scaled, centers = k, nstart = 25)
+# Aggiunta del cluster ai dati originali
+data$Cluster <- as.factor(km_result$cluster)
+fviz_cluster(km_result, data = data_scaled, 
+             geom = "point", ellipse.type = "norm",
+             palette = "jco", ggtheme = theme_minimal())
+
+head(data)
+
+#Reading, Writing, Maths plot
+
+girl_data<-data%>%filter(Gender=='female')
+boy_data<-data%>%filter(Gender=='male')
+ggplot()+
+  geom_point(girl_data,mapping=aes(`Math Score`,`Reading Score`,color='female'))+
+  geom_point(boy_data,mapping=aes(`Math Score`,`Reading Score`,color='male'))+labs(title='Math and Reading score')
+ggplot()+
+  geom_point(girl_data,mapping=aes(`Math Score`,`Writing Score`,color='female'))+
+  geom_point(boy_data,mapping = aes(`Math Score`,`Writing Score`,color='male'))+labs(title='Math and Writing score')
+ggplot()+
+  geom_point(girl_data,mapping=aes(`Reading Score`,`Writing Score`,color='female'))+
+  geom_point(boy_data,mapping = aes(`Reading Score`,`Writing Score`,color='male'))+labs(title='Reading and Writing Score')
+
+pairs.panels(data[, 6:8],
+             method = "pearson",  # Metodo di correlazione (Pearson di default)
+             hist.col = "skyblue", # Colore degli istogrammi
+             density = TRUE,       # Aggiunge curve di densità
+             ellipses = TRUE,      # Aggiunge ellissi di correlazione
+             lm = TRUE             # Aggiunge linee di regressione lineare
+)
+
+
+#Central Point
+
+# Calcolo della media per Math Score e Reading Score
+central_math_score <- mean(data$`Math Score`, na.rm = TRUE)
+central_reading_score <- mean(data$`Reading Score`, na.rm = TRUE)
+central_writing_score <- mean(data$`Writing Score`, na.rm = TRUE)
+
+# Visualizzazione dei risultati
+cat("Punto centrale (Math Score):", central_math_score, "\n")
+cat("Punto centrale (Reading Score):", central_reading_score, "\n")
+cat("Punto centrale (Writing Score):", central_writing_score, "\n")
+
+#Categorical Column Mean
+
+ndata %>%
+  group_by(`gender`) %>%
+  summarize(avg_score = round(mean(`math.score` + `reading.score` + `writing.score`) / 3, 1)) %>%
+  ggplot(aes(x = `gender`, y = avg_score, fill = `gender`)) +
+  geom_bar(stat = 'identity') +
+  geom_text(aes(label = avg_score), vjust = -0.3, size = 4) +  # Etichette sopra le barre
+  coord_flip() +  # Ruota il grafico orizzontalmente
+  labs(title = 'Average Score of Each Gender', x = 'Race/Ethnicity', y = 'Average Score') +
+  guides(fill = "none") +  # Rimuove la legenda
+  theme_minimal()
+ndata %>%
+  group_by(`race.ethnicity`) %>%
+  summarize(avg_score = round(mean(`math.score` + `reading.score` + `writing.score`) / 3, 1)) %>%
+  ggplot(aes(x = `race.ethnicity`, y = avg_score, fill = `race.ethnicity`)) +
+  geom_bar(stat = 'identity') +
+  geom_text(aes(label = avg_score), vjust = -0.3, size = 4) +  # Etichette sopra le barre
+  coord_flip() +  # Ruota il grafico orizzontalmente
+  labs(title = 'Average Score of Each Race Ethnicity', x = 'Race/Ethnicity', y = 'Average Score') +
+  guides(fill = "none") +  # Rimuove la legenda
+  theme_minimal()
+
+--> Parental level of Education |     Lunch     |   Test Preparation Course
+
+
+
+
+#Central Point
+
+central_math_score <- mean(data$`Math Score`, na.rm = TRUE)
+central_reading_score <- mean(data$`Reading Score`, na.rm = TRUE)
+central_writing_score <- mean(data$`Writing Score`, na.rm = TRUE)
+
+# Funzione per calcolare la distanza euclidea dal punto centrale
+euclidean_distance <- function(math, reading, writing) {
+  sqrt((math - central_math_score)^2 +
+         (reading - central_reading_score)^2 +
+         (writing - central_writing_score)^2)
+}
+  
+# Calcolo della distanza per ciascuna riga del dataset
+data$DistanceFromCenter <- mapply(euclidean_distance,
+                                  math = data$`Math Score`,
+                                  reading = data$`Reading Score`,
+                                  writing = data$`Writing Score`)
+
+# Visualizzazione dei primi risultati
+head(data)

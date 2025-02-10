@@ -1,0 +1,61 @@
+library(tidyverse)
+library(ggplot2)
+library(psych)
+library(knitr)
+
+Data Preparation 
+
+file_path <- file.choose()
+data <- read.csv(file_path)
+data%>%head()
+table(data$gender)
+table(data$race.ethnicity)
+table(data$parental.level.of.education)
+table(data$lunch)
+
+summary(data) # Visualizza i valori
+
+
+Data Cleaning 
+
+sum(is.na(data))  # Conta il numero totale di NA nel dataset
+colSums(is.na(data))  # Conta gli NA per ogni colonna
+data[!complete.cases(data), ]  # Visualizza le righe con NA
+sum(duplicated(data)) # Visualizza i valori duplicati
+lapply(data[, sapply(data, is.character)], unique) #Verificare i valori unici nelle colonne categoriche
+
+names(data)[names(data) == "gender"] <- "Gender"
+names(data)[names(data) == "race.ethnicity"] <- "Race Ethnicity"
+names(data)[names(data) == "parental.level.of.education"] <- "Parental Level of Education"
+names(data)[names(data) == "test.preparation.course"] <- "Test Preparation Course"
+names(data)[names(data) == "math.score"] <- "Math Score"
+names(data)[names(data) == "lunch"] <- "Lunch"
+names(data)[names(data) == "reading.score"] <- "Reading Score"
+names(data)[names(data) == "writing.score"] <- "Writing Score"
+
+
+Data Overview
+
+kable(head(data, 5)) #head(data, 5)
+
+
+# Istogramma per Math Score
+ggplot(data, aes(x = `Math Score`)) +
+  geom_histogram(bins = 20, fill = "skyblue", color = "black") +
+  ggtitle("Distribuzione dei Punteggi di Matematica") +
+  xlab("Math Score") +
+  ylab("Frequenza")
+
+# Istogramma per Reading Score
+ggplot(data, aes(x = `Reading Score`)) +
+  geom_histogram(bins = 20, fill = "lightgreen", color = "black") +
+  ggtitle("Distribuzione dei Punteggi di Lettura") +
+  xlab("Reading Score") +
+  ylab("Frequenza")
+
+# Istogramma per Writing Score
+ggplot(data, aes(x = `Writing Score`)) +
+  geom_histogram(bins = 20, fill = "salmon", color = "black") +
+  ggtitle("Distribuzione dei Punteggi di Scrittura") +
+  xlab("Writing Score") +
+  ylab("Frequenza")

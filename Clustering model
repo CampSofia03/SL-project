@@ -26,6 +26,7 @@ data[!complete.cases(data), ]  # Visualizza le righe con NA
 sum(duplicated(data)) # Visualizza i valori duplicati
 lapply(data[, sapply(data, is.character)], unique) #Verificare i valori unici nelle colonne categoriche
 
+TOGLI!!!!
 names(data)[names(data) == "gender"] <- "Gender"
 names(data)[names(data) == "race.ethnicity"] <- "Race Ethnicity"
 names(data)[names(data) == "parental.level.of.education"] <- "Parental Level of Education"
@@ -92,6 +93,10 @@ summary(data)
 
 data_scaled <- scale(data[, numeric_cols])
 
+installed.packages()["factoextra", ]
+library(factoextra)
+data_scaled <- scale(data[, numeric_cols])
+
 # Determinazione del numero ottimale di cluster con il metodo "Elbow"
 set.seed(123)  # Per garantire la riproducibilità
 fviz_nbclust(data_scaled, kmeans, method = "wss") +
@@ -112,17 +117,17 @@ head(data)
 
 #Reading, Writing, Maths plot
 
-girl_data<-data%>%filter(Gender=='female')
-boy_data<-data%>%filter(Gender=='male')
+girl_data<-data%>%filter(gender=='female')
+boy_data<-data%>%filter(gender=='male')
 ggplot()+
-  geom_point(girl_data,mapping=aes(`Math Score`,`Reading Score`,color='female'))+
-  geom_point(boy_data,mapping=aes(`Math Score`,`Reading Score`,color='male'))+labs(title='Math and Reading score')
+  geom_point(girl_data,mapping=aes(`math.score`,`reading.score`,color='female'))+
+  geom_point(boy_data,mapping=aes(`math.score`,`reading.score`,color='male'))+labs(title='Math and Reading Score')
 ggplot()+
-  geom_point(girl_data,mapping=aes(`Math Score`,`Writing Score`,color='female'))+
-  geom_point(boy_data,mapping = aes(`Math Score`,`Writing Score`,color='male'))+labs(title='Math and Writing score')
+  geom_point(girl_data,mapping=aes(`math.score`,`writing.score`,color='female'))+
+  geom_point(boy_data,mapping = aes(`math.score`,`writing.score`,color='male'))+labs(title='Math and Writing Score')
 ggplot()+
-  geom_point(girl_data,mapping=aes(`Reading Score`,`Writing Score`,color='female'))+
-  geom_point(boy_data,mapping = aes(`Reading Score`,`Writing Score`,color='male'))+labs(title='Reading and Writing Score')
+  geom_point(girl_data,mapping=aes(`reading.score`,`writing.score`,color='female'))+
+  geom_point(boy_data,mapping = aes(`reading.score`,`writing.score`,color='male'))+labs(title='Reading and Writing Score')
 
 pairs.panels(data[, 6:8],
              method = "pearson",  # Metodo di correlazione (Pearson di default)
@@ -194,3 +199,25 @@ data$DistanceFromCenter <- mapply(euclidean_distance,
 
 # Visualizzazione dei primi risultati
 head(data)
+
+# Creazione di un sottoinsieme con i primi 6 esempi
+subset_data <- data[1:6, ]
+
+# Definizione del punto centrale
+central_point <- data.frame(
+  `math.score` = central_math_score,
+  `reading.score` = central_reading_score,
+  `Writing Score` = central_writing_score
+)
+
+# Grafico a dispersione
+ggplot(subset_data, aes(x = `math.score`, y = `reading.score`, color = as.factor(cluster))) +
+  geom_point(size = 4, alpha = 0.8) +  # Punti per ogni esempio
+  geom_point(data = central_point, aes(x = `math.score`, y = `reading.score`),
+             color = "black", size = 6, shape = 4, stroke = 2) +  # Punto centrale (simbolo a croce)
+  geom_text(aes(label = DistanceFromCenter), vjust = -1, size = 3) +  # Etichette con la distanza
+  scale_color_brewer(palette = "Set2", name = "Cluster") +  # Colorazione per cluster
+  labs(title = "Distribuzione degli Esempi con Punto Centrale",
+       x = "Math Score", y = "Reading Score") +
+  theme_minimal() +
+  theme(legend.position = "right")

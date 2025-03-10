@@ -1,8 +1,12 @@
 library(tidyverse)
+install.packages("ggplot2")
 library(ggplot2)
+install.packages("psych")
 library(psych)
 library(knitr)
-library(factoextra) #install.packages("factoextra")
+installed.packages()["factoextra", ]
+library(factoextra)
+install.packages("dplyr")
 library(dplyr)
 
 #Data Preparation 
@@ -141,9 +145,9 @@ pairs.panels(data[, 6:8],
 #Central Point
 
 # Calcolo della media per Math Score e Reading Score
-central_math_score <- mean(data$`Math Score`, na.rm = TRUE)
-central_reading_score <- mean(data$`Reading Score`, na.rm = TRUE)
-central_writing_score <- mean(data$`Writing Score`, na.rm = TRUE)
+central_math_score <- mean(data$`math.score`, na.rm = TRUE)
+central_reading_score <- mean(data$`reading.score`, na.rm = TRUE)
+central_writing_score <- mean(data$`writing.score`, na.rm = TRUE)
 
 # Visualizzazione dei risultati
 cat("Punto centrale (Math Score):", central_math_score, "\n")
@@ -151,8 +155,9 @@ cat("Punto centrale (Reading Score):", central_reading_score, "\n")
 cat("Punto centrale (Writing Score):", central_writing_score, "\n")
 
 #Categorical Column Mean
+# Calcolo del punteggio medio per ciascun gruppo etnico
 
-ndata %>%
+data %>%
   group_by(`gender`) %>%
   summarize(avg_score = round(mean(`math.score` + `reading.score` + `writing.score`) / 3, 1)) %>%
   ggplot(aes(x = `gender`, y = avg_score, fill = `gender`)) +
@@ -162,7 +167,7 @@ ndata %>%
   labs(title = 'Average Score of Each Gender', x = 'Race/Ethnicity', y = 'Average Score') +
   guides(fill = "none") +  # Rimuove la legenda
   theme_minimal()
-ndata %>%
+data %>%
   group_by(`race.ethnicity`) %>%
   summarize(avg_score = round(mean(`math.score` + `reading.score` + `writing.score`) / 3, 1)) %>%
   ggplot(aes(x = `race.ethnicity`, y = avg_score, fill = `race.ethnicity`)) +
@@ -180,9 +185,6 @@ ndata %>%
 
 #Central Point
 
-central_math_score <- mean(data$`Math Score`, na.rm = TRUE)
-central_reading_score <- mean(data$`Reading Score`, na.rm = TRUE)
-central_writing_score <- mean(data$`Writing Score`, na.rm = TRUE)
 
 # Funzione per calcolare la distanza euclidea dal punto centrale
 euclidean_distance <- function(math, reading, writing) {
@@ -193,9 +195,9 @@ euclidean_distance <- function(math, reading, writing) {
   
 # Calcolo della distanza per ciascuna riga del dataset
 data$DistanceFromCenter <- mapply(euclidean_distance,
-                                  math = data$`Math Score`,
-                                  reading = data$`Reading Score`,
-                                  writing = data$`Writing Score`)
+                                  math = data$`math.score`,
+                                  reading = data$`reading.score`,
+                                  writing = data$`writing.score`)
 
 # Visualizzazione dei primi risultati
 head(data)
@@ -207,17 +209,58 @@ subset_data <- data[1:6, ]
 central_point <- data.frame(
   `math.score` = central_math_score,
   `reading.score` = central_reading_score,
-  `Writing Score` = central_writing_score
+  `writing.ccore` = central_writing_score
 )
 
 # Grafico a dispersione
-ggplot(subset_data, aes(x = `math.score`, y = `reading.score`, color = as.factor(cluster))) +
+ggplot(subset_data, aes(x = `math.score`, y = `reading.score`, color = as.factor(Cluster))) +
   geom_point(size = 4, alpha = 0.8) +  # Punti per ogni esempio
   geom_point(data = central_point, aes(x = `math.score`, y = `reading.score`),
              color = "black", size = 6, shape = 4, stroke = 2) +  # Punto centrale (simbolo a croce)
-  geom_text(aes(label = DistanceFromCenter), vjust = -1, size = 3) +  # Etichette con la distanza
+  geom_text(aes(label = round(DistanceFromCenter, 2)), vjust = -1, size = 3) +  # Etichette arrotondate a 2 decimali
   scale_color_brewer(palette = "Set2", name = "Cluster") +  # Colorazione per cluster
   labs(title = "Distribuzione degli Esempi con Punto Centrale",
        x = "Math Score", y = "Reading Score") +
   theme_minimal() +
   theme(legend.position = "right")
+
+# Parental Level of education vs ethnicity
+
+data %>%
+  group_by(`race.ethnicity`, `parental.level.of.education`) %>%
+  summarize(count = n(), .groups = "drop") %>%  # .groups = "drop" per evitare messaggi di warning
+  ggplot(aes(x = `race.ethnicity`, y = count, fill = `parental.level.of.education`)) +
+  geom_col(position = "dodge") +
+  scale_fill_manual(values = c("#006400", "#008000", "#32CD32", "#66CDAA", "#00FA9A", "#7FFF00")) +  # Tonalità di verde
+  labs(title = "Distribuzione del Livello di Istruzione dei Genitori per Etnia",
+       x = "Etnia",
+       y = "Numero di Studenti",
+       fill = "Livello di Istruzione") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Ruota le etichette per leggibilità
+
+# BoxPlot representing the math score for those who completed or not the test preparation divided by group etinicity
+# Creazione dei sottoinsiemi per ogni gruppo etnico
+groupa <- data %>% filter(`race.ethnicity` == "group A")
+groupb <- data %>% filter(`race.ethnicity` == "group B")
+groupc <- data %>% filter(`race.ethnicity` == "group C")
+groupd <- data %>% filter(`race.ethnicity` == "group D")
+groupe <- data %>% filter(`race.ethnicity` == "group E")
+
+# Funzione per generare i boxplot per ciascun gruppo
+create_boxplot <- function(data, group_name) {
+  ggplot(data, aes(x = reorder(`test.preparation.course`, math.score, median), y = math.score)) +
+    geom_boxplot(fill = "lightblue", color = "black") +
+    ggtitle(paste("GROUP", group_name)) +
+    xlab("Test Preparation Course") +
+    ylab("Math Score") +
+    coord_flip() +
+    theme_minimal()
+}
+
+# Genera i boxplot per ogni gruppo etnico
+create_boxplot(groupa, "A")
+create_boxplot(groupb, "B")
+create_boxplot(groupc, "C")
+create_boxplot(groupd, "D")
+create_boxplot(groupe, "E")

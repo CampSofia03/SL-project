@@ -180,7 +180,6 @@ pairs.panels(data[, 6:8],
              lm = TRUE             # Aggiunge linee di regressione lineare
 )
 
-
 #Central Point
 
 # Calcolo della media per Math Score e Reading Score

@@ -30,21 +30,60 @@ data[!complete.cases(data), ]  # Visualizza le righe con NA
 sum(duplicated(data)) # Visualizza i valori duplicati
 lapply(data[, sapply(data, is.character)], unique) #Verificare i valori unici nelle colonne categoriche
 
+
+
+#Analysis of Lunch
+totalLunch <- table(data$lunch)
+totalLunch
+
+
+# Raggruppamento per tipo di pranzo e calcolo dei punteggi totali
+lunch_summary <- data %>% 
+  group_by(lunch) %>%
+  summarise(
+    mathTotal = sum(math.score, na.rm = TRUE),
+    readingTotal = sum(reading.score, na.rm = TRUE),
+    writingTotal = sum(writing.score, na.rm = TRUE)
+  ) %>%
+  mutate(totalScores = mathTotal + readingTotal + writingTotal)
+
+# Creazione del grafico con miglioramenti estetici
+ggplot(lunch_summary, aes(x = lunch, y = totalScores, fill = lunch)) + 
+  geom_bar(stat = "identity", width = 0.6) +  # Ridotto leggermente la larghezza delle barre
+  labs(
+    title = "Test Preparation Comparison",
+    subtitle = "Total Scores by Lunch Type",
+    x = "Lunch Type",
+    y = "Total Scores"
+  ) +
+  theme_minimal() +  # Tema più pulito
+  theme(
+    axis.text.x = element_text(vjust = 1, hjust = 0.5),  # Migliore leggibilità etichette asse X
+    legend.position = "none"  # Nasconde la legenda se il fill corrisponde all'asse X
+  ) +
+  geom_text(aes(label = totalScores), vjust = -0.5, size = 3)  # Aggiunti numeri sopra le barre
+
 TOGLI!!!!
-names(data)[names(data) == "gender"] <- "Gender"
-names(data)[names(data) == "race.ethnicity"] <- "Race Ethnicity"
-names(data)[names(data) == "parental.level.of.education"] <- "Parental Level of Education"
-names(data)[names(data) == "test.preparation.course"] <- "Test Preparation Course"
-names(data)[names(data) == "math.score"] <- "Math Score"
-names(data)[names(data) == "lunch"] <- "Lunch"
-names(data)[names(data) == "reading.score"] <- "Reading Score"
-names(data)[names(data) == "writing.score"] <- "Writing Score"
+#names(data)[names(data) == "gender"] <- "Gender"
+#names(data)[names(data) == "race.ethnicity"] <- "Race Ethnicity"
+#names(data)[names(data) == "parental.level.of.education"] <- "Parental Level of Education"
+#names(data)[names(data) == "test.preparation.course"] <- "Test Preparation Course"
+#names(data)[names(data) == "math.score"] <- "Math Score"
+#names(data)[names(data) == "lunch"] <- "Lunch"
+#names(data)[names(data) == "reading.score"] <- "Reading Score"
+#names(data)[names(data) == "writing.score"] <- "Writing Score"
 
 
 #Data Distribution Overview
 
 kable(head(data, 5)) #head(data, 5)
 
+#Analysis of Ethnicity
+x1 <- data %>% 
+  group_by(race.ethnicity) %>%
+  filter(math.score > 80, writing.score > 80, reading.score > 80) 
+table(x1$race.ethnicity)
+x1 %>% ggplot() + geom_bar(aes(x1$race.ethnicity,fill = x1$race.ethnicity))
 
 # Istogramma per Math Score
 ggplot(data, aes(x = `Math Score`)) +
@@ -153,6 +192,33 @@ central_writing_score <- mean(data$`writing.score`, na.rm = TRUE)
 cat("Punto centrale (Math Score):", central_math_score, "\n")
 cat("Punto centrale (Reading Score):", central_reading_score, "\n")
 cat("Punto centrale (Writing Score):", central_writing_score, "\n")
+
+
+# Calcolo della media per Math Score e Reading Score suddiviso per genere
+
+mean_scores <- data %>%
+  group_by(gender) %>%
+  summarise(
+    math_mean = mean(math.score, na.rm = TRUE),
+    writing_mean = mean(writing.score, na.rm = TRUE),
+    reading_mean = mean(reading.score, na.rm = TRUE)
+  ) %>%
+  pivot_longer(cols = c(math_mean, writing_mean, reading_mean), 
+               names_to = "subject", 
+               values_to = "mean_score")
+
+# Creazione del grafico con valori numerici sopra le barre
+ggplot(mean_scores, aes(x = gender, y = mean_score, fill = subject)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = round(mean_score, 1)), 
+            position = position_dodge(width = 0.9), 
+            vjust = -0.5, size = 3) +
+  labs(title = "Media dei punteggi per genere",
+       x = "Genere",
+       y = "Media del punteggio",
+       fill = "Materia") +
+  theme_minimal()
+
 
 #Categorical Column Mean
 # Calcolo del punteggio medio per ciascun gruppo etnico
@@ -264,3 +330,29 @@ create_boxplot(groupb, "B")
 create_boxplot(groupc, "C")
 create_boxplot(groupd, "D")
 create_boxplot(groupe, "E")
+
+
+#Correlation of scores
+
+# Calcolo della matrice di correlazione e dei p-value
+res2 <- rcorr(as.matrix(data[, c("math.score", "writing.score", "reading.score")]))
+
+# Funzione per appiattire la matrice di correlazione in formato tabella
+flattenCorrMatrix <- function(cormat, pmat) {
+  ut <- upper.tri(cormat)  # Seleziona solo la parte superiore della matrice
+  data.frame(
+    Variable1 = rownames(cormat)[row(cormat)[ut]],
+    Variable2 = colnames(cormat)[col(cormat)[ut]],
+    Correlation = round(cormat[ut], 3),  # Arrotonda le correlazioni a 3 decimali
+    P_value = round(pmat[ut], 4)  # Arrotonda i p-value a 4 decimali
+  )
+}
+
+# Creazione della tabella delle correlazioni
+cor_table <- flattenCorrMatrix(res2$r, res2$P)
+
+# Stampa la tabella
+print(cor_table)
+
+
+

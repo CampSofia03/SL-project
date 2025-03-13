@@ -12,7 +12,7 @@ install.packages("ggcorrplot")
 library(ggcorrplot)
 library(reader)
 
-#Data Preparation 
+## 1 - Data Preparation 
 
 file_path <- file.choose()
 data <- read.csv(file_path)
@@ -23,7 +23,7 @@ table(data$parental.level.of.education)
 table(data$lunch)
 
 summary(data) # Visualizza i valori
-data.describe()
+
 
 #Data Cleaning 
 

@@ -1,8 +1,17 @@
+---
+Title: Clustering model
+Author: Campregher Sofia
+Source: https://www.kaggle.com/datasets/spscientist/students-performance-in-exams/data
+
+---
+
+install.packages("tidyverse")
 library(tidyverse)
 install.packages("ggplot2")
 library(ggplot2)
 install.packages("psych")
 library(psych)
+install.packages("knitr")
 library(knitr)
 installed.packages()["factoextra", ]
 library(factoextra)
@@ -10,173 +19,145 @@ install.packages("dplyr")
 library(dplyr)
 install.packages("ggcorrplot")
 library(ggcorrplot)
+install.packages("reader")
 library(reader)
+install.packages("fossil")
+library(fossil)
+
 
 ## 1 - Data Preparation 
+  
 
 file_path <- file.choose()
 data <- read.csv(file_path)
-data%>%head()
-table(data$gender)
-table(data$race.ethnicity)
-table(data$parental.level.of.education)
-table(data$lunch)
 
-summary(data) # Visualizza i valori
+# 1.a - Data cleaning
 
+sum(is.na(data))
+colSums(is.na(data))
+data[!complete.cases(data), ]
+sum(duplicated(data))
 
-#Data Cleaning 
+# 1.b - Outlier elimination 
 
-sum(is.na(data))  # Conta il numero totale di NA nel dataset
-colSums(is.na(data))  # Conta gli NA per ogni colonna
-data[!complete.cases(data), ]  # Visualizza le righe con NA
-sum(duplicated(data)) # Visualizza i valori duplicati
-lapply(data[, sapply(data, is.character)], unique) #Verificare i valori unici nelle colonne categoriche
-
-kable(head(data, 5)) #head(data, 5)
-
-
-
-
-TOGLI!!!!
-#names(data)[names(data) == "gender"] <- "Gender"
-#names(data)[names(data) == "race.ethnicity"] <- "Race Ethnicity"
-#names(data)[names(data) == "parental.level.of.education"] <- "Parental Level of Education"
-#names(data)[names(data) == "test.preparation.course"] <- "Test Preparation Course"
-#names(data)[names(data) == "math.score"] <- "Math Score"
-#names(data)[names(data) == "lunch"] <- "Lunch"
-#names(data)[names(data) == "reading.score"] <- "Reading Score"
-#names(data)[names(data) == "writing.score"] <- "Writing Score"
-
-
-#Data Distribution Overview
-
-
-# Istogramma per Math Score
-ggplot(data, aes(x = `Math Score`)) +
-  geom_histogram(bins = 20, fill = "skyblue", color = "black") +
-  ggtitle("Distribuzione dei Punteggi di Matematica") +
-  xlab("Math Score") +
-  ylab("Frequenza")
-
-# Istogramma per Reading Score
-ggplot(data, aes(x = `Reading Score`)) +
-  geom_histogram(bins = 20, fill = "lightgreen", color = "black") +
-  ggtitle("Distribuzione dei Punteggi di Lettura") +
-  xlab("Reading Score") +
-  ylab("Frequenza")
-
-# Istogramma per Writing Score
-ggplot(data, aes(x = `Writing Score`)) +
-  geom_histogram(bins = 20, fill = "salmon", color = "black") +
-  ggtitle("Distribuzione dei Punteggi di Scrittura") +
-  xlab("Writing Score") +
-  ylab("Frequenza")
-
-#Analysis of Data
-totalLunch <- table(data$lunch)
-totalLunch
-
-# Creazione del grafico con colori distinti per ogni etnia
-ggplot(data, aes(x = gender, fill = factor(race.ethnicity))) +  
-  geom_bar(position = "dodge") +  # Barre affiancate per confronto
-  scale_fill_manual(values = c("red", "blue", "green", "purple", "orange")) +  # Assegna colori personalizzati
-  ggtitle("Ethnic Group Distribution by Gender") +  
-  xlab("Gender") +  
-  ylab("Frequency") +  
-  theme_minimal() +  # Tema più pulito
-  theme(legend.title = element_text(size = 12), 
-        legend.text = element_text(size = 10))  # Migliora la leggibilità della legenda
-
-# Raggruppamento per tipo di pranzo e calcolo dei punteggi totali
-lunch_summary <- data %>% 
-  group_by(lunch) %>%
-  summarise(
-    mathTotal = sum(math.score, na.rm = TRUE),
-    readingTotal = sum(reading.score, na.rm = TRUE),
-    writingTotal = sum(writing.score, na.rm = TRUE)
-  ) %>%
-  mutate(totalScores = mathTotal + readingTotal + writingTotal)
-
-# Creazione del grafico con miglioramenti estetici
-ggplot(lunch_summary, aes(x = lunch, y = totalScores, fill = lunch)) + 
-  geom_bar(stat = "identity", width = 0.6) +  # Ridotto leggermente la larghezza delle barre
-  labs(
-    title = "Test Preparation Comparison",
-    subtitle = "Total Scores by Lunch Type",
-    x = "Lunch Type",
-    y = "Total Scores"
-  ) +
-  theme_minimal() +  # Tema più pulito
-  theme(
-    axis.text.x = element_text(vjust = 1, hjust = 0.5),  # Migliore leggibilità etichette asse X
-    legend.position = "none"  # Nasconde la legenda se il fill corrisponde all'asse X
-  ) +
-  geom_text(aes(label = totalScores), vjust = -0.5, size = 3)  # Aggiunti numeri sopra le barre
-
-#Analysis of Ethnicity
-x1 <- data %>% 
-  group_by(race.ethnicity) %>%
-  filter(math.score > 80, writing.score > 80, reading.score > 80) 
-table(x1$race.ethnicity)
-x1 %>% ggplot() + geom_bar(aes(x1$race.ethnicity,fill = x1$race.ethnicity))
-
-
-
-
-
-#Outlier Elimination Strategy
-
-numeric_cols <- c("Math Score", "Reading Score", "Writing Score") #colonne numeriche
+numeric_cols <- c("math.score", "reading.score", "writing.score")
 
 for (col in numeric_cols) {
   Q1 <- quantile(data[[col]], 0.25, na.rm = TRUE)
   Q3 <- quantile(data[[col]], 0.75, na.rm = TRUE)
   IQR_value <- Q3 - Q1
   
-  # Visualizza i limiti per il debug
   cat("\nColonna:", col, "\nQ1:", Q1, "\nQ3:", Q3, "\nIQR:", IQR_value, "\n")
-  
-  # Controlla il numero di righe prima e dopo il filtro
-  cat("Righe prima:", nrow(data), "\n")
+  cat("Pre-row:", nrow(data), "\n")
   
   data <- data[data[[col]] >= (Q1 - 1.5 * IQR_value) & 
                  data[[col]] <= (Q3 + 1.5 * IQR_value), ]
   
-  cat("Righe dopo:", nrow(data), "\n")
+  cat("Post-row", nrow(data), "\n")
 }
 
 summary(data)
 
+colnames(data)
 
-#Clustering, Visualization, Comparison
 
-data_scaled <- scale(data[, numeric_cols])
+## 2 - Data visualization
 
-installed.packages()["factoextra", ]
-library(factoextra)
-data_scaled <- scale(data[, numeric_cols])
+data%>%head()
 
-# Determinazione del numero ottimale di cluster con il metodo "Elbow"
-set.seed(123)  # Per garantire la riproducibilità
-fviz_nbclust(data_scaled, kmeans, method = "wss") +
-  geom_vline(xintercept = 4, linetype = 2) +
-  labs(subtitle = "Metodo del Gomito (Elbow Method)")
+# 2.a - Data overview
 
-# Esecuzione del clustering K-means
-k <- 5  # Numero di cluster scelto
-set.seed(123)
-km_result <- kmeans(data_scaled, centers = k, nstart = 25)
-# Aggiunta del cluster ai dati originali
-data$Cluster <- as.factor(km_result$cluster)
-fviz_cluster(km_result, data = data_scaled, 
-             geom = "point", ellipse.type = "norm",
-             palette = "jco", ggtheme = theme_minimal())
+summary(data)
+str(data)
+lapply(data[, sapply(data, is.character)], unique)
+table(data$gender)
+table(data$race.ethnicity)
+table(data$parental.level.of.education)
+table(data$test.preparation.course)
+table(data$lunch)
 
-head(data)
+# 2.b - Data distribution overview
 
-#Reading, Writing, Maths plot
+# Histogram - Math Score
+ggplot(data, aes(x =math.score)) +
+  geom_histogram(bins = 20, fill = "skyblue", color = "black") +
+  ggtitle("Distribution of Math Scores") +
+  xlab("Math Score") +
+  ylab("Frequency")
 
+# Histogram - Reading Score
+ggplot(data, aes(x =reading.score)) +
+  geom_histogram(bins = 20, fill = "lightgreen", color = "black") +
+  ggtitle("Distribution of Reading Scores") +
+  xlab("Reading Score") +
+  ylab("Frequency")
+
+# Histogram - per Writing Score
+ggplot(data, aes(x =writing.score)) +
+  geom_histogram(bins = 20, fill = "salmon", color = "black") +
+  ggtitle("Distribution of Writing Scores") +
+  xlab("Writing Score") +
+  ylab("Frequency")
+
+# Histogram - Ethnic Group Distribution diveded by Parental Level of Educaion
+data %>%
+  group_by(`race.ethnicity`, `parental.level.of.education`) %>%
+  summarize(count = n(), .groups = "drop") %>%  
+  ggplot(aes(x = `race.ethnicity`, y = count, fill = `parental.level.of.education`)) +
+  geom_col(position = "dodge") +
+  scale_fill_manual(values = c("#006400", "#008000", "#32CD32", "#66CDAA", "#00FA9A", "#7FFF00")) + 
+  labs(title = "Ethnic Group Distribution",
+       x = "Ethnicity",
+       y = "Frequency",
+       fill = "Parental Level of Education") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Histogram - Ethnic Group Distribution by Gender
+ggplot(data, aes(x = gender, fill = factor(race.ethnicity))) +  
+  geom_bar(position = "dodge") +
+  scale_fill_manual(values = c("#006400", "#008000", "#32CD32", "#66CDAA", "#00FA9A"), 
+                    name = "Ethnicity") +
+  ggtitle("Ethnic Group Distribution by Gender") +  
+  xlab("Gender") +  
+  ylab("Frequency") +
+  theme_minimal() + 
+  theme(legend.title = element_text(size = 12), 
+        legend.text = element_text(size = 10)) 
+
+# Histogram - Total Score by Lunch Type
+lunch_summary <- data %>% 
+  group_by(lunch) %>%
+  summarise(
+    MathTotalScore = sum(math.score, na.rm = TRUE),
+    ReadingTotalScore = sum(reading.score, na.rm = TRUE),
+    WritingTotalScore = sum(writing.score, na.rm = TRUE)
+  ) %>%
+  mutate(TotalScore = MathTotalScore + ReadingTotalScore + WritingTotalScore)
+print(lunch_summary)
+ggplot(lunch_summary, aes(x = lunch, y = TotalScore, fill = lunch)) + 
+  geom_bar(stat = "identity", width = 0.6) +
+  labs(
+    title = "Total Scores by Lunch Type",
+    x = "Lunch Type",
+    y = "Total Scores"
+  ) +
+  theme_minimal() + 
+  theme(
+    axis.text.x = element_text(vjust = 1, hjust = 0.5),
+    legend.position = "none"
+  ) +
+  geom_text(aes(label = TotalScore), vjust = -0.5, size = 3)
+
+# Number of student diveded per etnicity with grade >80
+table(data$race.ethnicity)
+race.ethnicity80 <- data %>% 
+  group_by(race.ethnicity) %>%
+  filter(math.score > 80, writing.score > 80, reading.score > 80) 
+table(x1$race.ethnicity)
+race.ethnicity80 %>% ggplot() + geom_bar(aes(x1$race.ethnicity,fill = x1$race.ethnicity))
+
+#Reading - Writing - Maths score divided by gender
 girl_data<-data%>%filter(gender=='female')
 boy_data<-data%>%filter(gender=='male')
 ggplot()+
@@ -190,302 +171,192 @@ ggplot()+
   geom_point(boy_data,mapping = aes(`reading.score`,`writing.score`,color='male'))+labs(title='Reading and Writing Score')
 
 pairs.panels(data[, 6:8],
-             method = "pearson",  # Metodo di correlazione (Pearson di default)
-             hist.col = "skyblue", # Colore degli istogrammi
-             density = TRUE,       # Aggiunge curve di densità
-             ellipses = TRUE,      # Aggiunge ellissi di correlazione
-             lm = TRUE             # Aggiunge linee di regressione lineare
+             method = "pearson",  
+             hist.col = "skyblue", 
+             density = TRUE,      
+             ellipses = TRUE,      
+             lm = TRUE            
 )
 
-#Central Point
 
-# Calcolo della media per Math Score e Reading Score
+## 3 - Data clusering 
+
+
+# 3.a - Optimal number of cluster - Elbow method
+
+data_scaled <- scale(data[, numeric_cols])
+set.seed(123)
+fviz_nbclust(data_scaled, kmeans, method = "wss") +
+  geom_vline(xintercept = 4, linetype = 2) +
+  labs(subtitle = "Elbow Method")
+k <- 5 
+
+set.seed(123)
+gap_stat <- clusGap(data_scaled, FUN = kmeans, K.max = 5, B = 50)
+fviz_gap_stat(gap_stat)
+
+set.seed(123)
+km_result <- kmeans(data_scaled, centers = k, nstart = 25)
+print(kmeans_result$centers)
+data$Cluster <- as.factor(km_result$cluster)
+fviz_cluster(km_result, data = data_scaled, 
+             geom = "point", ellipse.type = "norm",
+             palette = "jco", ggtheme = theme_minimal())
+cluster_summary <- data %>%
+  group_by(Cluster) %>%
+  summarise(
+    Avg_Math = mean(math.score),
+    Avg_Reading = mean(reading.score),
+    Avg_Writing = mean(writing.score),
+    Count = n()
+  )
+print(cluster_summary)
+head(data)
+
+#Math Score vs Reading Score
+ggplot(data, aes(x = math.score, y = reading.score, color = Cluster)) +
+  geom_point(size = 4, alpha = 0.8) +
+  scale_color_brewer(palette = "Set1") +
+  labs(title = "K-Means Clustering: Math vs Reading Score",
+       x = "Math Score", y = "Reading Score") +
+  theme_minimal()
+
+#Math Score vs Writing Score
+ggplot(data, aes(x = math.score, y = writing.score, color = Cluster)) +
+  geom_point(size = 4, alpha = 0.8) +
+  scale_color_brewer(palette = "Set1") +
+  labs(title = "K-Means Clustering: Math vs Writing Score",
+       x = "Math Score", y = "Writing Score") +
+  theme_minimal()
+
+#Reading Score vs Writing Score
+ggplot(data, aes(x = reading.score, y = writing.score, color = Cluster)) +
+  geom_point(size = 4, alpha = 0.8) +
+  scale_color_brewer(palette = "Set1") +
+  labs(title = "K-Means Clustering: Reading vs Writing Score",
+       x = "Reading Score", y = "Writing Score") +
+  theme_minimal()
+
+
+fviz_silhouette(silhouette(kmeans_result$cluster, dist(scaled_data)))
+table(data$Cluster, data$`test.preparation.course`)
+
+ggplot(data, aes(x = Cluster, y = math.score, fill = Cluster)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(title = "Math Score Distribution by Cluster", x = "Cluster", y = "Math Score")
+
+ggplot(data, aes(x = Cluster, y = reading.score, fill = Cluster)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(title = "Reading Score Distribution by Cluster", x = "Cluster", y = "Reading Score")
+
+ggplot(data, aes(x = Cluster, y = writing.score, fill = Cluster)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(title = "Writing Score Distribution by Cluster", x = "Cluster", y = "Writing Score")
+
+install.packages("fossil")
+library(fossil)
+
+#Comparision btw Ethnicity&KMeans
+rand_index <- rand.index(as.integer(data$Cluster), as.integer(as.factor(data$race.ethnicity)))
+print(paste("Rand Index:", round(rand_index, 3)))
+
+
+## 4 - Central point
+
+
+# 4.a - Mean computation
+
 central_math_score <- mean(data$`math.score`, na.rm = TRUE)
 central_reading_score <- mean(data$`reading.score`, na.rm = TRUE)
 central_writing_score <- mean(data$`writing.score`, na.rm = TRUE)
 
-# Visualizzazione dei risultati
-cat("Punto centrale (Math Score):", central_math_score, "\n")
-cat("Punto centrale (Reading Score):", central_reading_score, "\n")
-cat("Punto centrale (Writing Score):", central_writing_score, "\n")
+cat("Central point - Math Score:", central_math_score, "\n")
+cat("Central point - Reading Score:", central_reading_score, "\n")
+cat("Central point - Writing Score:", central_writing_score, "\n")
 
-
-# Calcolo della media per Math Score e Reading Score suddiviso per genere
-
+# 4.a - Mean computation divided by gender
 mean_scores <- data %>%
   group_by(gender) %>%
   summarise(
-    math_mean = mean(math.score, na.rm = TRUE),
-    writing_mean = mean(writing.score, na.rm = TRUE),
-    reading_mean = mean(reading.score, na.rm = TRUE)
+    MathMean = mean(math.score, na.rm = TRUE),
+    WritingMean = mean(writing.score, na.rm = TRUE),
+    ReadingMean = mean(reading.score, na.rm = TRUE)
   ) %>%
-  pivot_longer(cols = c(math_mean, writing_mean, reading_mean), 
+  pivot_longer(cols = c(MathMean, WritingMean, ReadingMean), 
                names_to = "subject", 
                values_to = "mean_score")
-
-# Creazione del grafico con valori numerici sopra le barre
 ggplot(mean_scores, aes(x = gender, y = mean_score, fill = subject)) +
   geom_bar(stat = "identity", position = "dodge") +
   geom_text(aes(label = round(mean_score, 1)), 
             position = position_dodge(width = 0.9), 
             vjust = -0.5, size = 3) +
-  labs(title = "Media dei punteggi per genere",
-       x = "Genere",
-       y = "Media del punteggio",
+  labs(title = "Mean by Gender",
+       x = "Gender",
+       y = "Mean",
        fill = "Materia") +
   theme_minimal()
-
-
-#Categorical Column Mean
-# Calcolo del punteggio medio per ciascun gruppo etnico
 
 data %>%
   group_by(`gender`) %>%
   summarize(avg_score = round(mean(`math.score` + `reading.score` + `writing.score`) / 3, 1)) %>%
   ggplot(aes(x = `gender`, y = avg_score, fill = `gender`)) +
   geom_bar(stat = 'identity') +
-  geom_text(aes(label = avg_score), vjust = -0.3, size = 4) +  # Etichette sopra le barre
-  coord_flip() +  # Ruota il grafico orizzontalmente
-  labs(title = 'Average Score of Each Gender', x = 'Race/Ethnicity', y = 'Average Score') +
-  guides(fill = "none") +  # Rimuove la legenda
-  theme_minimal()
-data %>%
-  group_by(`race.ethnicity`) %>%
-  summarize(avg_score = round(mean(`math.score` + `reading.score` + `writing.score`) / 3, 1)) %>%
-  ggplot(aes(x = `race.ethnicity`, y = avg_score, fill = `race.ethnicity`)) +
-  geom_bar(stat = 'identity') +
-  geom_text(aes(label = avg_score), vjust = -0.3, size = 4) +  # Etichette sopra le barre
-  coord_flip() +  # Ruota il grafico orizzontalmente
-  labs(title = 'Average Score of Each Race Ethnicity', x = 'Race/Ethnicity', y = 'Average Score') +
-  guides(fill = "none") +  # Rimuove la legenda
+  geom_text(aes(label = avg_score), vjust = -0.3, size = 4) +
+  coord_flip() +  
+  labs(title = 'Average Score of Each Gender', x = 'Gender', y = 'Average Score') +
+  guides(fill = "none") + 
   theme_minimal()
 
---> Parental level of Education |     Lunch     |   Test Preparation Course
+# 4.b - Distance form central point
 
-
-
-
-#Central Point
-
-
-# Funzione per calcolare la distanza euclidea dal punto centrale
 euclidean_distance <- function(math, reading, writing) {
   sqrt((math - central_math_score)^2 +
          (reading - central_reading_score)^2 +
          (writing - central_writing_score)^2)
 }
-  
-# Calcolo della distanza per ciascuna riga del dataset
 data$DistanceFromCenter <- mapply(euclidean_distance,
                                   math = data$`math.score`,
                                   reading = data$`reading.score`,
                                   writing = data$`writing.score`)
-
-# Visualizzazione dei primi risultati
 head(data)
 
-# Creazione di un sottoinsieme con i primi 6 esempi
-subset_data <- data[1:6, ]
-
-# Definizione del punto centrale
+subset_data <- data[1:10, ]
 central_point <- data.frame(
-  `math.score` = central_math_score,
-  `reading.score` = central_reading_score,
-  `writing.ccore` = central_writing_score
+  math.score = central_math_score,
+  reading.score = central_reading_score,
+  writing.score = central_writing_score
 )
-
-# Grafico a dispersione
 ggplot(subset_data, aes(x = `math.score`, y = `reading.score`, color = as.factor(Cluster))) +
-  geom_point(size = 4, alpha = 0.8) +  # Punti per ogni esempio
+  geom_point(size = 4, alpha = 0.8) +  
   geom_point(data = central_point, aes(x = `math.score`, y = `reading.score`),
-             color = "black", size = 6, shape = 4, stroke = 2) +  # Punto centrale (simbolo a croce)
-  geom_text(aes(label = round(DistanceFromCenter, 2)), vjust = -1, size = 3) +  # Etichette arrotondate a 2 decimali
-  scale_color_brewer(palette = "Set2", name = "Cluster") +  # Colorazione per cluster
-  labs(title = "Distribuzione degli Esempi con Punto Centrale",
+             color = "black", size = 6, shape = 4, stroke = 2) +
+  geom_text(aes(label = round(DistanceFromCenter, 2)), vjust = -1, size = 3) +
+  scale_color_brewer(palette = "Set2", name = "Cluster") + 
+  labs(title = "Distance from Central Point",
        x = "Math Score", y = "Reading Score") +
   theme_minimal() +
   theme(legend.position = "right")
-
-# Parental Level of education vs ethnicity
-
-data %>%
-  group_by(`race.ethnicity`, `parental.level.of.education`) %>%
-  summarize(count = n(), .groups = "drop") %>%  # .groups = "drop" per evitare messaggi di warning
-  ggplot(aes(x = `race.ethnicity`, y = count, fill = `parental.level.of.education`)) +
-  geom_col(position = "dodge") +
-  scale_fill_manual(values = c("#006400", "#008000", "#32CD32", "#66CDAA", "#00FA9A", "#7FFF00")) +  # Tonalità di verde
-  labs(title = "Distribuzione del Livello di Istruzione dei Genitori per Etnia",
-       x = "Etnia",
-       y = "Numero di Studenti",
-       fill = "Livello di Istruzione") +
+ggplot(subset_data, aes(x = `math.score`, y = `writing.score`, color = as.factor(Cluster))) +
+  geom_point(size = 4, alpha = 0.8) +  
+  geom_point(data = central_point, aes(x = `math.score`, y = `writing.score`),
+             color = "black", size = 6, shape = 4, stroke = 2) +
+  geom_text(aes(label = round(DistanceFromCenter, 2)), vjust = -1, size = 3) +
+  scale_color_brewer(palette = "Set2", name = "Cluster") + 
+  labs(title = "Distance from Central Point",
+       x = "Math Score", y = "Writing Score") +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Ruota le etichette per leggibilità
-
-# BoxPlot representing the math score for those who completed or not the test preparation divided by group etinicity
-# Creazione dei sottoinsiemi per ogni gruppo etnico
-groupa <- data %>% filter(`race.ethnicity` == "group A")
-groupb <- data %>% filter(`race.ethnicity` == "group B")
-groupc <- data %>% filter(`race.ethnicity` == "group C")
-groupd <- data %>% filter(`race.ethnicity` == "group D")
-groupe <- data %>% filter(`race.ethnicity` == "group E")
-
-# Funzione per generare i boxplot per ciascun gruppo
-create_boxplot <- function(data, group_name) {
-  ggplot(data, aes(x = reorder(`test.preparation.course`, math.score, median), y = math.score)) +
-    geom_boxplot(fill = "lightblue", color = "black") +
-    ggtitle(paste("GROUP", group_name)) +
-    xlab("Test Preparation Course") +
-    ylab("Math Score") +
-    coord_flip() +
-    theme_minimal()
-}
-
-# Genera i boxplot per ogni gruppo etnico
-create_boxplot(groupa, "A")
-create_boxplot(groupb, "B")
-create_boxplot(groupc, "C")
-create_boxplot(groupd, "D")
-create_boxplot(groupe, "E")
-
-
-#Correlation of scores
-
-# Calcolo della matrice di correlazione e dei p-value
-res2 <- rcorr(as.matrix(data[, c("math.score", "writing.score", "reading.score")]))
-
-# Funzione per appiattire la matrice di correlazione in formato tabella
-flattenCorrMatrix <- function(cormat, pmat) {
-  ut <- upper.tri(cormat)  # Seleziona solo la parte superiore della matrice
-  data.frame(
-    Variable1 = rownames(cormat)[row(cormat)[ut]],
-    Variable2 = colnames(cormat)[col(cormat)[ut]],
-    Correlation = round(cormat[ut], 3),  # Arrotonda le correlazioni a 3 decimali
-    P_value = round(pmat[ut], 4)  # Arrotonda i p-value a 4 decimali
-  )
-}
-
-# Creazione della tabella delle correlazioni
-cor_table <- flattenCorrMatrix(res2$r, res2$P)
-
-# Stampa la tabella
-print(cor_table)
-
-#correlazione variabili
-
-
-# Creazione delle variabili numeriche
-data$gender1 <- as.numeric(factor(data$gender))
-data$race.ethnicity1 <- as.numeric(factor(data$race.ethnicity)) # Corretto per evitare duplicazioni
-data$parent.education1 <- as.numeric(factor(data$parental.level.of.education, 
-                                            levels = c('some high school', 'high school', 'some college', 
-                                                       "associate's degree", "bachelor's degree", "master's degree")))
-data$lunch1 <- as.numeric(factor(data$lunch, levels = c("standard", "free/reduced")))
-data$preparation.course <- as.numeric(factor(data$test.preparation.course, levels = c('none', 'completed')))
-
-# Creazione di un nuovo dataset senza "distance from the center"
-dataNew <- data %>%
-  select(-`DistanceFromCenter`)  # Rimuove la colonna specifica
-
-# Visualizza il dataset (opzionale)
-View(dataNew)
-
-# Seleziona solo colonne numeriche dopo la rimozione
-df <- select_if(dataNew, is.numeric)
-
-# Calcola la matrice di correlazione senza "distance from the center"
-r <- cor(df, use = "complete.obs")
-r <- round(r, 2)  # Arrotonda i valori a due decimali
-
-# Visualizzazione della matrice di correlazione con ggcorrplot
-ggcorrplot(r, hc.order = TRUE, type = "lower", lab = TRUE)
-colnames(data)
-
-
-
-library(tidyr)  # Per pivot_longer()
-
-# Calcola la media dei punteggi per "none" e "completed"
-prep_means <- data %>%
-  group_by(`test.preparation.course`) %>%
-  summarize(
-    mean_math = mean(math.score, na.rm = TRUE),
-    mean_reading = mean(reading.score, na.rm = TRUE),
-    mean_writing = mean(writing.score, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
-  pivot_longer(cols = starts_with("mean_"), names_to = "Score Type", values_to = "Mean Score")
-
-
-# Modifica i nomi delle categorie per il grafico
-prep_means$`Score Type` <- recode(prep_means$`Score Type`,
-                                  "mean_math" = "Math Score",
-                                  "mean_reading" = "Reading Score",
-                                  "mean_writing" = "Writing Score")
-
-# Grafico a barre corretto
-prep1 <- ggplot(prep_means, aes(x = `test.preparation.course`, y = `Mean Score`, fill = `Score Type`)) +
-  geom_bar(stat = "identity", position = "dodge") +  # Barre separate per punteggi diversi
-  scale_fill_manual(values = c("Math Score" = "blue", "Reading Score" = "green", "Writing Score" = "purple")) +
-  labs(title = "Media Punteggi per Test Preparation Course",
-       x = "Test Preparation Course",
-       y = "Punteggio Medio",
-       fill = "Tipo di Punteggio") +
-  theme_minimal()
-
-# Mostra il grafico
-print(prep1)
-
-#(3)observe test preparation course and mean ----
-unique(data$`test.preparation.course`)
-# Creazione dataset separato per chi ha completato o meno il test preparation course
-uncomplete_prep <- data %>% filter(`test.preparation.course` == "none")
-complete_prep <- data %>% filter(`test.preparation.course` == "completed")
-
-# Calcolo delle medie per ogni gruppo
-prep_means <- data %>%
-  group_by(`test.preparation.course`) %>%
-  summarize(mean_math = mean(math.score, na.rm = TRUE),
-            mean_reading = mean(reading.score, na.rm = TRUE),
-            mean_writing = mean(writing.score, na.rm = TRUE))
-
-# Grafico a barre con la media dei punteggi per chi ha completato/non completato
-prep1 <- ggplot(prep_means, aes(x = `test.preparation.course`)) +
-  geom_bar(aes(y = mean_math, fill = "Math Score"), stat = "identity", position = "dodge") +
-  geom_bar(aes(y = mean_reading, fill = "Reading Score"), stat = "identity", position = "dodge") +
-  geom_bar(aes(y = mean_writing, fill = "Writing Score"), stat = "identity", position = "dodge") +
-  scale_fill_manual(values = c("Math Score" = "blue", "Reading Score" = "green", "Writing Score" = "purple")) +
-  labs(title = "Media Punteggi per Test Preparation Course",
-       x = "Test Preparation Course",
-       y = "Punteggio Medio",
-       fill = "Tipo di Punteggio") +
-  theme_minimal()
-
-# Grafico a boxplot per la distribuzione dei punteggi nei due gruppi
-prep2 <- ggplot(data, aes(x = `test.preparation.course`, y = math.score)) +
-  geom_boxplot(fill = "lightblue") +
-  labs(title = "Distribuzione Punteggi di Matematica",
-       x = "Test Preparation Course",
-       y = "Math Score") +
-  theme_minimal()
-
-# Mostra i grafici
-print(prep1)
-print(prep2)    ------->?
----
-#more in specific
-num_data <- data[, c( "math.score", "reading.score", "writing.score")]
-m<-cor(num_data)
-m
-corrplot(m, method="circle", type='upper', tl.cex=0.8, tl.col = 'black')
----
-#Are there any differences between the exam scores of female and male students? TTEST
-t.test(math.score~gender, var.equal=TRUE)
-t.test(reading.score~gender, var.equal=TRUE, data=data)
-t.test(writing_score~gender,var.equal=TRUE )
-
-#CHISQUARE
-xtab<- table(gender, lunch)
-chisq.test(xtab)
-xtab<- table(gender, test.preparation.course)
-chisq.test(xtab)
----
+  theme(legend.position = "right")
+ggplot(subset_data, aes(x = `writing.score`, y = `reading.score`, color = as.factor(Cluster))) +
+  geom_point(size = 4, alpha = 0.8) +  
+  geom_point(data = central_point, aes(x = `writing.score`, y = `reading.score`),
+             color = "black", size = 6, shape = 4, stroke = 2) +
+  geom_text(aes(label = round(DistanceFromCenter, 2)), vjust = -1, size = 3) +
+  scale_color_brewer(palette = "Set2", name = "Cluster") + 
+  labs(title = "Distance from Central Point",
+       x = "Writing Score", y = "Reading Score") +
+  theme_minimal() +
+  theme(legend.position = "right")
+  

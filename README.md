@@ -6,7 +6,7 @@
 
 ---
 
-## 📌🔍 **Project Overview**  
+## 🔍 **Project Overview**  
 The first part of the project applies **K-Means Clustering** to group students based on their **Math, Reading, and Writing scores**. The objective is to uncover patterns in student performance and identify clusters with similar characteristics.
 The first part of the project applies **Linear Regression **
 

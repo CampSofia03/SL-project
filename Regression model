@@ -1,1 +1,124 @@
+## 1 - Data Preparation 
+
+
+file_path <- file.choose()
+data <- read.csv(file_path)
+
+# 1.a - Data cleaning
+
+sum(is.na(data))
+colSums(is.na(data))
+data[!complete.cases(data), ]
+sum(duplicated(data))
+
+# 1.b - Outlier elimination 
+
+numeric_cols <- c("math.score", "reading.score", "writing.score")
+
+for (col in numeric_cols) {
+  Q1 <- quantile(data[[col]], 0.25, na.rm = TRUE)
+  Q3 <- quantile(data[[col]], 0.75, na.rm = TRUE)
+  IQR_value <- Q3 - Q1
+  
+  cat("\nColonna:", col, "\nQ1:", Q1, "\nQ3:", Q3, "\nIQR:", IQR_value, "\n")
+  cat("Pre-row:", nrow(data), "\n")
+  
+  data <- data[data[[col]] >= (Q1 - 1.5 * IQR_value) & 
+                 data[[col]] <= (Q3 + 1.5 * IQR_value), ]
+  
+  cat("Post-row", nrow(data), "\n")
+}
+
+summary(data)
+
+colnames(data)
+
+
+## 2 - Correlation 
+
+
+# 2.a - Correlation matrix and p-values
+install.packages("Hmisc")
+library(Hmisc)
+
+res2 <- rcorr(as.matrix(data[, c("math.score", "writing.score", "reading.score")]))
+
+flattenCorrMatrix <- function(cormat, pmat) {
+  ut <- upper.tri(cormat)  
+  data.frame(
+    Variable1 = rownames(cormat)[row(cormat)[ut]],
+    Variable2 = colnames(cormat)[col(cormat)[ut]],
+    Correlation = round(cormat[ut], 3),
+    P_value = round(pmat[ut], 4)
+  )
+}
+
+cor_table <- flattenCorrMatrix(res2$r, res2$P)
+
+print(cor_table)
+
+# 2.b Correlation visualization
+install.packages("dplyr")
+library(dplyr)
+
+data$gender1 <- as.numeric(factor(data$gender))
+data$race.ethnicity1 <- as.numeric(factor(data$race.ethnicity)) # Corretto per evitare duplicazioni
+data$parent.education1 <- as.numeric(factor(data$parental.level.of.education, 
+                                            levels = c('some high school', 'high school', 'some college', 
+                                                       "associate's degree", "bachelor's degree", "master's degree")))
+data$lunch1 <- as.numeric(factor(data$lunch, levels = c("standard", "free/reduced")))
+data$test.preparation.course1 <- as.numeric(factor(data$test.preparation.course, levels = c('none', 'completed')))
+
+View(data)
+
+df <- select_if(data, is.numeric)
+
+r <- cor(df, use = "complete.obs")
+r <- round(r, 2)  # Arrotonda i valori a due decimali
+
+install.packages("ggplot2")
+library(ggplot2)
+install.packages("ggcorrplot")
+library(ggcorrplot)
+
+ggcorrplot(r, hc.order = TRUE, type = "lower", lab = TRUE)
+colnames(data)
+
+# 
+install.packages("dplyr")
+library(dplyr)
+install.packages("tidyr")
+library(tidyr)
+
+# Calcola la media dei punteggi per "none" e "completed"
+prep_means <- data %>%
+  group_by(`test.preparation.course`) %>%
+  summarize(
+    mean_math = mean(math.score, na.rm = TRUE),
+    mean_reading = mean(reading.score, na.rm = TRUE),
+    mean_writing = mean(writing.score, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  pivot_longer(cols = starts_with("mean_"), names_to = "Score Type", values_to = "Mean Score")
+
+prep_means$`Score Type` <- recode(prep_means$`Score Type`,
+                                  "mean_math" = "Math Score",
+                                  "mean_reading" = "Reading Score",
+                                  "mean_writing" = "Writing Score")
+
+install.packages("ggplot2")
+library(ggplot2)
+
+prep1 <- ggplot(prep_means, aes(x = `test.preparation.course`, y = `Mean Score`, fill = `Score Type`)) +
+  geom_bar(stat = "identity", position = "dodge") +  # Barre separate per punteggi diversi
+  scale_fill_manual(values = c("Math Score" = "blue", "Reading Score" = "green", "Writing Score" = "purple")) +
+  labs(title = "Media Punteggi per Test Preparation Course",
+       x = "Test Preparation Course",
+       y = "Punteggio Medio",
+       fill = "Tipo di Punteggio") +
+  theme_minimal()
+
+print(prep1)
+
+
 

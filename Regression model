@@ -81,6 +81,19 @@ library(ggplot2)
 
 ggcorrplot(r, hc.order = TRUE, type = "lower", lab = TRUE)
 
+install.packages("corrplot")
+library(corrplot)
+num_data <- data[, c( "math.score", "reading.score", "writing.score")]
+corr_<-cor(num_data)
+corr_
+corrplot(corr_, method="circle", type='upper', tl.cex=0.8, tl.col = 'black')
+
+scatter.smooth(x=data$math.score, y=data$reading.score, main="Math ~ Reading", xlab = "Math", ylab = "Reading")
+scatter.smooth(x=data$math.score, y=data$writing.score, main="Math ~ Writing", xlab = "Math", ylab = "Writing")
+scatter.smooth(x=data$reading.score, y=data$math.score, main="Reading ~ Math", xlab = "Reading", ylab = "Math")
+scatter.smooth(x=data$reading.score, y=data$writing.score, main="Reading ~ Writing", xlab = "Reading", ylab = "Writing")
+scatter.smooth(x=data$writing.score, y=data$reading.score, main="Writing ~ Math", xlab = "Writing", ylab = "Reading")
+scatter.smooth(x=data$writing.score, y=data$math.score, main="Writing ~ Math", xlab = "Writing", ylab = "Math")
 
 #Data Distributions - normally distributed? 
 
@@ -158,4 +171,91 @@ barplot(vi3, horiz = FALSE, las = 1, col = "#1D91C0",
         yaxt = "n", ylab = "")
 par(mfrow = c(1,1))
 
+
+
+#Linear Regression - Simple
+reg1s <- lm(math.score ~ writing.score + reading.score, data=data)
+reg2s <- lm(reading.score ~ math.score + writing.score, data=data)
+reg3s <- lm(writing.score ~ math.score + reading.score, data=data)
+var_names <- c("(Intercept)" = "Intercept",
+               "writing.score" = "WritingS",
+               "reading.score" = "ReadingS",
+               "math.score" = "MathS")
+print(reg1s)
+print(reg2s)
+print(reg3s)
+
+generate_equation <- function(model, target_variable) {
+  coef_rounded <- round(coef(model), 2)
+  equation <- paste0(target_variable, " = ", coef_rounded[1])
+  
+  for (i in 2:length(coef_rounded)) {
+    sign <- ifelse(coef_rounded[i] >= 0, " + ", " - ")
+    var_name <- var_names[names(coef_rounded)[i]]
+    equation <- paste0(equation, sign, abs(coef_rounded[i]), "*", var_name)
+  }
+  
+  return(equation)
+}
+
+eq_math <- generate_equation(reg1s, "Math Score")
+eq_reading <- generate_equation(reg2s, "Reading Score")
+eq_writing <- generate_equation(reg3s, "Writing Score")
+
+cat("Math Score Equation:\n", eq_math, "\n\n")
+cat("Reading Score Equation:\n", eq_reading, "\n\n")
+cat("Writing Score Equation:\n", eq_writing, "\n\n")
+
+#Linear Regression - Multiple
+reg1m <- lm(math.score ~ gender + race.ethnicity + reading.score + 
+             parental.level.of.education + lunch + test.preparation.course + writing.score, data=data)
+
+reg2m <- lm(reading.score ~ gender + race.ethnicity + parental.level.of.education + 
+             lunch + test.preparation.course + math.score + writing.score, data=data)
+
+reg3m <- lm(writing.score ~ gender + race.ethnicity + parental.level.of.education + 
+             lunch + test.preparation.course + reading.score + math.score, data=data)
+
+var_names <- c("(Intercept)" = "Intercept",
+               "gendermale" = "Male",
+               "genderfemale" = "Female",
+               "race.ethnicitygroup A" = "GroupA",
+               "race.ethnicitygroup B" = "GroupB",
+               "race.ethnicitygroup C" = "GroupC",
+               "race.ethnicitygroup D" = "GroupD",
+               "race.ethnicitygroup E" = "GroupE",
+               "parental.level.of.educationbachelor's degree" = "Bachelor",
+               "parental.level.of.educationhigh school" = "HighS",
+               "parental.level.of.educationmaster's degree" = "Master",
+               "parental.level.of.educationsome college" = "SCollege",
+               "parental.level.of.educationsome high school" = "SHighS",
+               "parental.level.of.educationassociate's degree" = "Associate",
+               "lunchstandard" = "SLunch",
+               "lunchfree/reduced" = "RLunch",
+               "test.preparation.coursenone" = "NoTPrep",
+               "test.preparation.coursecompleted" = "TPrep",
+               "writing.score" = "WritingS",
+               "reading.score" = "ReadingS",
+               "math.score" = "MathS")
+
+generate_equation <- function(model, target_variable) {
+  coef_rounded <- round(coef(model), 2)
+  equation <- paste0(target_variable, " = ", coef_rounded[1])
+  
+  for (i in 2:length(coef_rounded)) {
+    sign <- ifelse(coef_rounded[i] >= 0, " + ", " - ")
+    var_name <- var_names[names(coef_rounded)[i]]
+    equation <- paste0(equation, sign, abs(coef_rounded[i]), "*", var_name)
+  }
+  
+  return(equation)
+}
+
+eq_math <- generate_equation(reg1m, "Math Score")
+eq_reading <- generate_equation(reg2m, "Reading Score")
+eq_writing <- generate_equation(reg3m, "Writing Score")
+
+cat("Math Score Equation:\n", eq_math, "\n\n")
+cat("Reading Score Equation:\n", eq_reading, "\n\n")
+cat("Writing Score Equation:\n", eq_writing, "\n\n")
 

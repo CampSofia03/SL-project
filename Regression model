@@ -1,3 +1,4 @@
+if (!requireNamespace("caret", quietly = TRUE)) {install.packages("caret")}
 ## 1 - Data Preparation 
 
 
@@ -61,13 +62,13 @@ print(cor_table)
 install.packages("dplyr")
 library(dplyr)
 
-data$gender1 <- as.numeric(factor(data$gender))
-data$race.ethnicity1 <- as.numeric(factor(data$race.ethnicity)) # Corretto per evitare duplicazioni
-data$parent.education1 <- as.numeric(factor(data$parental.level.of.education, 
+data$Gender <- as.numeric(factor(data$gender))
+data$Ethnicity <- as.numeric(factor(data$race.ethnicity)) # Corretto per evitare duplicazioni
+data$ParentEd <- as.numeric(factor(data$parental.level.of.education, 
                                             levels = c('some high school', 'high school', 'some college', 
                                                        "associate's degree", "bachelor's degree", "master's degree")))
-data$lunch1 <- as.numeric(factor(data$lunch, levels = c("standard", "free/reduced")))
-data$test.preparation.course1 <- as.numeric(factor(data$test.preparation.course, levels = c('none', 'completed')))
+data$Lunch <- as.numeric(factor(data$lunch, levels = c("standard", "free/reduced")))
+data$TPrep <- as.numeric(factor(data$test.preparation.course, levels = c('none', 'completed')))
 
 View(data)
 
@@ -79,7 +80,8 @@ r <- round(r, 2)  # Arrotonda i valori a due decimali
 install.packages("ggplot2")
 library(ggplot2)
 
-ggcorrplot(r, hc.order = TRUE, type = "lower", lab = TRUE)
+ggcorrplot(r, hc.order = TRUE, colors = c("aquamarine", "white", "dodgerblue"),
+           type = "lower", lab = TRUE)
 
 install.packages("corrplot")
 library(corrplot)
@@ -259,3 +261,27 @@ cat("Math Score Equation:\n", eq_math, "\n\n")
 cat("Reading Score Equation:\n", eq_reading, "\n\n")
 cat("Writing Score Equation:\n", eq_writing, "\n\n")
 
+#Multicollinearity
+if (!requireNamespace("caret", quietly = TRUE)) {install.packages("caret")}
+library(caret)
+
+m1 <- subset(df, select = -c(math.score))
+m1[] <- lapply(m1, function(x) if(is.factor(x) | is.character(x)) as.numeric(as.factor(x)) else x)
+mc <- cor(m1)
+highlyCorrelated = findCorrelation(mc, cutoff=0.7)
+highlyCorCol = colnames(m1)[highlyCorrelated]
+highlyCorCol
+
+m2 <- subset(df, select = -c(reading.score))
+m2[] <- lapply(m2, function(x) if(is.factor(x) | is.character(x)) as.numeric(as.factor(x)) else x)
+mc <- cor(m2)
+highlyCorrelated = findCorrelation(mc, cutoff=0.7)
+highlyCorCol = colnames(m2)[highlyCorrelated]
+highlyCorCol
+
+m3 <- subset(df, select = -c(writing.score))
+m3[] <- lapply(m3, function(x) if(is.factor(x) | is.character(x)) as.numeric(as.factor(x)) else x)
+mc <- cor(m3)
+highlyCorrelated = findCorrelation(mc, cutoff=0.7)
+highlyCorCol = colnames(m3)[highlyCorrelated]
+highlyCorCol

@@ -11,7 +11,7 @@ colSums(is.na(data))
 data[!complete.cases(data), ]
 sum(duplicated(data))
 
-# 1.b - Outlier elimination 
+####### 1.b - Outlier elimination 
 
 numeric_cols <- c("math.score", "reading.score", "writing.score")
 
@@ -78,47 +78,84 @@ r <- round(r, 2)  # Arrotonda i valori a due decimali
 
 install.packages("ggplot2")
 library(ggplot2)
-install.packages("ggcorrplot")
-library(ggcorrplot)
 
 ggcorrplot(r, hc.order = TRUE, type = "lower", lab = TRUE)
-colnames(data)
 
-# 
-install.packages("dplyr")
-library(dplyr)
-install.packages("tidyr")
-library(tidyr)
 
-# Calcola la media dei punteggi per "none" e "completed"
-prep_means <- data %>%
-  group_by(`test.preparation.course`) %>%
-  summarize(
-    mean_math = mean(math.score, na.rm = TRUE),
-    mean_reading = mean(reading.score, na.rm = TRUE),
-    mean_writing = mean(writing.score, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
-  pivot_longer(cols = starts_with("mean_"), names_to = "Score Type", values_to = "Mean Score")
+#Data Distributions - normally distributed? 
 
-prep_means$`Score Type` <- recode(prep_means$`Score Type`,
-                                  "mean_math" = "Math Score",
-                                  "mean_reading" = "Reading Score",
-                                  "mean_writing" = "Writing Score")
-
-install.packages("ggplot2")
-library(ggplot2)
-
-prep1 <- ggplot(prep_means, aes(x = `test.preparation.course`, y = `Mean Score`, fill = `Score Type`)) +
-  geom_bar(stat = "identity", position = "dodge") +  # Barre separate per punteggi diversi
-  scale_fill_manual(values = c("Math Score" = "blue", "Reading Score" = "green", "Writing Score" = "purple")) +
-  labs(title = "Media Punteggi per Test Preparation Course",
-       x = "Test Preparation Course",
-       y = "Punteggio Medio",
-       fill = "Tipo di Punteggio") +
+p1 <- ggplot(df, aes(x = math.score)) + 
+  geom_histogram(binwidth = 5, fill = "lightblue", color = "black") + 
+  geom_boxplot(aes(y = -5), width = 3, outlier.shape = NA) +
+  labs(title = "Math Scores", x = "Math Score", y = "Frequency") +
   theme_minimal()
 
-print(prep1)
+p2 <- ggplot(df, aes(x = reading.score)) + 
+  geom_histogram(binwidth = 5, fill = "lightblue", color = "black") + 
+  geom_boxplot(aes(y = -5), width = 3, outlier.shape = NA) +
+  labs(title = "Reading Scores", x = "Reading Score", y = "Frequency") +
+  theme_minimal()
 
+p3 <- ggplot(df, aes(x = writing.score)) + 
+  geom_histogram(binwidth = 5, fill = "lightblue", color = "black") + 
+  geom_boxplot(aes(y = -5), width = 3, outlier.shape = NA) +
+  labs(title = "Writing Scores", x = "Writing Score", y = "Frequency") +
+  theme_minimal()
+
+gridExtra::grid.arrange(p1, p2, p3, ncol = 3)
+
+#Skewness
+install.packages("moments")
+library(moments)
+skew_table <- data.frame(
+  Score_Type = c("Math Score", "Reading Score", "Writing Score"),
+  Skewness = c(
+    skewness(df$math.score, na.rm = TRUE),
+    skewness(df$reading.score, na.rm = TRUE),
+    skewness(df$writing.score, na.rm = TRUE)
+  )
+)
+
+print(skew_table)
+
+#Variable dipendences
+c_ <- subset(c, select = -Cluster)
+
+c_math <- subset(c_, select = -c(writing.score,reading.score)) 
+c_writing <- subset(c_, select = -c(reading.score,math.score)) 
+c_reading <- subset(c_, select = -c(writing.score,math.score)) 
+
+library(rpart)
+
+fit1 <- rpart(math.score ~ ., data = c_math)
+fit2 <- rpart(writing.score ~ ., data = c_writing)
+fit3 <- rpart(reading.score ~ ., data = c_reading)
+
+options(repr.plot.width = 16, repr.plot.height = 7)
+par(mfrow = c(1,3))
+
+vi1 <- sort(fit1$variable.importance, decreasing = TRUE)[1:2]
+vi2 <- sort(fit2$variable.importance, decreasing = TRUE)[1:2]
+vi3 <- sort(fit3$variable.importance, decreasing = TRUE)[1:2] 
+
+barplot(vi1, horiz = FALSE, las = 1, col = "#1D91C0",
+        main = "Math Score Prediction",
+        names.arg = names(vi1),
+        cex.names = 0.5,
+        cex.main = 0.9,
+        yaxt = "n", ylab = "")
+
+barplot(vi2, horiz = FALSE, las = 1, col = "#1D91C0",
+        main = "Writing Score Prediction",
+        cex.names = 0.5,
+        cex.main = 0.9,
+        yaxt = "n", ylab = "")
+
+barplot(vi3, horiz = FALSE, las = 1, col = "#1D91C0",
+        main = "Reading Score Prediction",
+        cex.names = 0.5,
+        cex.main = 0.9,
+        yaxt = "n", ylab = "")
+par(mfrow = c(1,1))
 
 

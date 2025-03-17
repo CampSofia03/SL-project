@@ -174,11 +174,35 @@ barplot(vi3, horiz = FALSE, las = 1, col = "#1D91C0",
 par(mfrow = c(1,1))
 
 
+#Multicollinearity
+if (!requireNamespace("caret", quietly = TRUE)) {install.packages("caret")}
+library(caret)
+
+m1 <- subset(df, select = -c(math.score))
+m1[] <- lapply(m1, function(x) if(is.factor(x) | is.character(x)) as.numeric(as.factor(x)) else x)
+mc <- cor(m1)
+highlyCorrelated = findCorrelation(mc, cutoff=0.7)
+highlyCorCol = colnames(m1)[highlyCorrelated]
+highlyCorCol
+
+m2 <- subset(df, select = -c(reading.score))
+m2[] <- lapply(m2, function(x) if(is.factor(x) | is.character(x)) as.numeric(as.factor(x)) else x)
+mc <- cor(m2)
+highlyCorrelated = findCorrelation(mc, cutoff=0.7)
+highlyCorCol = colnames(m2)[highlyCorrelated]
+highlyCorCol
+
+m3 <- subset(df, select = -c(writing.score))
+m3[] <- lapply(m3, function(x) if(is.factor(x) | is.character(x)) as.numeric(as.factor(x)) else x)
+mc <- cor(m3)
+highlyCorrelated = findCorrelation(mc, cutoff=0.7)
+highlyCorCol = colnames(m3)[highlyCorrelated]
+highlyCorCol
 
 #Linear Regression - Simple
-reg1s <- lm(math.score ~ writing.score + reading.score, data=data)
-reg2s <- lm(reading.score ~ math.score + writing.score, data=data)
-reg3s <- lm(writing.score ~ math.score + reading.score, data=data)
+reg1s <- lm(math.score ~ reading.score, data=data)
+reg2s <- lm(reading.score ~ math.score, data=data)
+reg3s <- lm(writing.score ~ math.score, data=data)
 var_names <- c("(Intercept)" = "Intercept",
                "writing.score" = "WritingS",
                "reading.score" = "ReadingS",
@@ -208,15 +232,19 @@ cat("Math Score Equation:\n", eq_math, "\n\n")
 cat("Reading Score Equation:\n", eq_reading, "\n\n")
 cat("Writing Score Equation:\n", eq_writing, "\n\n")
 
+summary(reg1s)
+summary(reg2s)
+summary(reg3s)
+
 #Linear Regression - Multiple
 reg1m <- lm(math.score ~ gender + race.ethnicity + reading.score + 
-             parental.level.of.education + lunch + test.preparation.course + writing.score, data=data)
+             parental.level.of.education + lunch + test.preparation.course, data=data) #noWriting
 
 reg2m <- lm(reading.score ~ gender + race.ethnicity + parental.level.of.education + 
-             lunch + test.preparation.course + math.score + writing.score, data=data)
+             lunch + test.preparation.course + math.score, data=data) #noWriting
 
 reg3m <- lm(writing.score ~ gender + race.ethnicity + parental.level.of.education + 
-             lunch + test.preparation.course + reading.score + math.score, data=data)
+              lunch + test.preparation.course + math.score, data=data) #noReading
 
 var_names <- c("(Intercept)" = "Intercept",
                "gendermale" = "Male",
@@ -261,27 +289,104 @@ cat("Math Score Equation:\n", eq_math, "\n\n")
 cat("Reading Score Equation:\n", eq_reading, "\n\n")
 cat("Writing Score Equation:\n", eq_writing, "\n\n")
 
-#Multicollinearity
-if (!requireNamespace("caret", quietly = TRUE)) {install.packages("caret")}
-library(caret)
+summary(reg1m)
+summary(reg2m)
+summary(reg3m)
 
-m1 <- subset(df, select = -c(math.score))
-m1[] <- lapply(m1, function(x) if(is.factor(x) | is.character(x)) as.numeric(as.factor(x)) else x)
-mc <- cor(m1)
-highlyCorrelated = findCorrelation(mc, cutoff=0.7)
-highlyCorCol = colnames(m1)[highlyCorrelated]
-highlyCorCol
 
-m2 <- subset(df, select = -c(reading.score))
-m2[] <- lapply(m2, function(x) if(is.factor(x) | is.character(x)) as.numeric(as.factor(x)) else x)
-mc <- cor(m2)
-highlyCorrelated = findCorrelation(mc, cutoff=0.7)
-highlyCorCol = colnames(m2)[highlyCorrelated]
-highlyCorCol
+#Variance Inflation Factor
+cat("\n--- VIF - Math Score Model ---\n")
+print(vif(reg1m))
 
-m3 <- subset(df, select = -c(writing.score))
-m3[] <- lapply(m3, function(x) if(is.factor(x) | is.character(x)) as.numeric(as.factor(x)) else x)
-mc <- cor(m3)
-highlyCorrelated = findCorrelation(mc, cutoff=0.7)
-highlyCorCol = colnames(m3)[highlyCorrelated]
-highlyCorCol
+cat("\n--- VIF - Reading Score Model ---\n")
+print(vif(reg2m))
+
+cat("\n--- VIF - Writing Score Model ---\n")
+print(vif(reg3m))
+
+#QQPlot - Specific
+library(ggplot2)
+
+qqplot_math <- ggplot(df, aes(sample = math.score)) +
+  geom_qq() +
+  geom_qq_line() +
+  ggtitle("Normal Q-Q Plot of Math Scores") +
+  theme_minimal()
+
+qqplot_reading <- ggplot(df, aes(sample = reading.score)) +
+  geom_qq() +
+  geom_qq_line() +
+  ggtitle("Normal Q-Q Plot of Reading Scores") +
+  theme_minimal()
+
+qqplot_writing <- ggplot(df, aes(sample = writing.score)) +
+  geom_qq() +
+  geom_qq_line() +
+  ggtitle("Normal Q-Q Plot of Writing Scores") +
+  theme_minimal()
+
+print(qqplot_math)
+print(qqplot_reading)
+print(qqplot_writing)
+
+#Residuals vs Fitted Plot - Specific
+library(ggplot2)
+
+plot_residuals <- function(model, model_name) {
+  residuals_model <- residuals(model)  # Residui
+  fitted_values_model <- fitted(model) # Valori predetti
+  
+  df_residuals <- data.frame(Fitted = fitted_values_model, Residuals = residuals_model)
+  
+  residual_plot <- ggplot(df_residuals, aes(x = Fitted, y = Residuals)) +
+    geom_point(alpha = 0.6) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+    ggtitle(paste("Residuals vs Fitted Values -", model_name)) +
+    xlab("Fitted Values") +
+    ylab("Residuals") +
+    theme_minimal()
+  
+  print(residual_plot)
+}
+
+plot_residuals(reg1m, "Math Score Model")
+plot_residuals(reg2m, "Reading Score Model")
+plot_residuals(reg3m, "Writing Score Model")
+
+#QQPlot-Residuals vs Fitted Plot-Scale Location-Residuals vs Leverage
+
+options(repr.plot.width=20, repr.plot.height=7)
+par(mfrow = c(2,2))
+plot(reg1m, main = "Diagnostic Plots - Model reg1m")
+plot(reg2m, main = "Diagnostic Plots - Model reg2m")
+plot(reg2m, main = "Diagnostic Plots - Model reg3m")
+
+#Model assumption
+install.packages("gvlma")
+library(gvlma)
+gvmodel_1 <- gvlma(reg1m)
+summary(gvmodel_1)
+
+summary(reg1m)
+
+
+#Interacts of Writing
+reg1mw <- lm(math.score ~ writing.score*gender + writing.score*race.ethnicity + writing.score*reading.score + 
+              writing.score*parental.level.of.education + writing.score*lunch + writing.score*test.preparation.course, data=data) #noWriting
+
+reg2mw <- lm(reading.score ~ writing.score*gender + writing.score*race.ethnicity + writing.score*parental.level.of.education + 
+              writing.score*lunch + writing.score*test.preparation.course + writing.score*math.score, data=data) #noWriting
+summary(reg1mw)
+summary(reg2mw)
+
+#Variance Inflation Factor
+cat("\n--- VIF - Math Score Model* Writing ---\n")
+print(vif(reg1mw))
+
+cat("\n--- VIF - Reading Score Model* Writing ---\n")
+print(vif(reg2mw))
+
+options(repr.plot.width=20, repr.plot.height=7)
+par(mfrow = c(5,4,4,2))
+plot(reg1mw, main = "Diagnostic Plots - Model reg1mw")
+plot(reg2mw, main = "Diagnostic Plots - Model reg2mw")

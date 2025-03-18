@@ -370,14 +370,19 @@ summary(gvmodel_1)
 summary(reg1m)
 
 
-#Interacts of Writing
+#Interacts of Writing&Reading
 reg1mw <- lm(math.score ~ writing.score*gender + writing.score*race.ethnicity + writing.score*reading.score + 
               writing.score*parental.level.of.education + writing.score*lunch + writing.score*test.preparation.course, data=data) #noWriting
 
 reg2mw <- lm(reading.score ~ writing.score*gender + writing.score*race.ethnicity + writing.score*parental.level.of.education + 
               writing.score*lunch + writing.score*test.preparation.course + writing.score*math.score, data=data) #noWriting
+
+reg3mr <- lm(writing.score ~ reading.score*gender + reading.score*race.ethnicity + reading.score*parental.level.of.education + 
+              reading.score*lunch + reading.score*test.preparation.course + math.score, data=data)
+
 summary(reg1mw)
 summary(reg2mw)
+summary(reg23mr)
 
 #Variance Inflation Factor
 cat("\n--- VIF - Math Score Model* Writing ---\n")
@@ -386,7 +391,16 @@ print(vif(reg1mw))
 cat("\n--- VIF - Reading Score Model* Writing ---\n")
 print(vif(reg2mw))
 
+cat("\n--- VIF - Writing Score Model* Writing ---\n")
+print(vif(reg3mw))
+
 options(repr.plot.width=20, repr.plot.height=7)
 par(mfrow = c(5,4,4,2))
 plot(reg1mw, main = "Diagnostic Plots - Model reg1mw")
 plot(reg2mw, main = "Diagnostic Plots - Model reg2mw")
+plot(reg3mr, main = "Diagnostic Plots - Model reg3mr")
+
+#Model Comparison (?)
+anova(reg1m, reg1mw)
+AIC(reg1m, reg1mw)
+BIC(reg1m, reg1mw)

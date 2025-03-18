@@ -1,0 +1,146 @@
+##Logistic regression
+
+par(mfrow = c(1,1))
+par(mar = c(5, 4, 4, 2) + 0.1)
+library(dplyr)
+library(ggplot2)
+
+data_ <- data[, !(names(data) %in% c("Gender", "Ethnicity", "ParentEd", "Lunch", "TPrep"))]
+student <- data_ %>% mutate(pass = ifelse(math.score > 60,1,0) %>% as.factor())
+head(student)
+
+set.seed(1)
+train <- sample(1:nrow(student),nrow(student)*.9,rep = F)
+lr.model <- glm(pass ~ . -math.score - reading.score - writing.score,data = student, family = binomial,subset = train)
+summary(lr.model)
+
+#Predictor vectors - Confusion
+probabilities <- predict(lr.model, newdata = student[-train, ], type = "response")
+predictions <- ifelse(probabilities > 0.5, 1, 0)
+confusion_matrix <- table(Predicted = predictions, Actual = student$pass[-train])
+print(confusion_matrix)
+
+#Probability distribution
+ggplot(data.frame(Probability = probabilities, Pass = as.factor(student$pass[-train])),
+       aes(x = Probability, fill = Pass)) +
+  geom_histogram(alpha = 0.6, bins = 30, position = "identity") +
+  labs(title = "Probability distribution - LR",
+       x = "Predicted Probability",
+       y = "Frequency") +
+  theme_minimal()
+
+#Accuracy
+test <- setdiff(1:nrow(student), train)
+pred <- predict(lr.model, newdata = student[test, ], type = "response")
+pred_class <- ifelse(pred > 0.5, 1, 0)
+mean(pred_class == student$pass[test])
+
+#Precision
+precision <- confusion_matrix[2,2] / sum(confusion_matrix[2,])
+precision
+
+#Recall
+recall <- confusion_matrix[2,2] / sum(confusion_matrix[,2])
+recall
+
+#F1
+F1_score <- 2 * (precision * recall) / (precision + recall)
+F1_score
+
+#ROC
+library(pROC)
+roc_curve <- roc(student$pass[test], pred)
+plot(roc_curve, main = "ROC Curve", col = "blue", lwd = 2)
+auc(roc_curve)
+
+
+
+#Overall Accuracy
+overall_accuracy <- mean(predictions == student$pass[-train])
+cat("Overall Model Accuracy:", overall_accuracy, "\n")
+
+#Missclassification rate
+misclassification_rate <- mean(predictions != student$pass[-train])
+cat("Misclassification Rate:", misclassification_rate, "\n")
+
+#False Positive Rate
+false_positive_rate <- confusion_matrix[2,1] / sum(confusion_matrix[,1])
+cat("False Positive Rate:", false_positive_rate, "\n")
+
+# False Negative Rate
+false_negative_rate <- confusion_matrix[1,2] / sum(confusion_matrix[,2])
+cat("False Negative Rate:", false_negative_rate, "\n")
+
+
+##Linear Discriminant Analiysis
+
+library(MASS)
+
+#Model
+lda_model <- lda(pass ~ . -math.score -reading.score -writing.score, 
+                 data = student, subset = train)
+
+lda_predictions <- predict(lda_model, newdata = student[-train,])
+confusion_matrix_ <- table(Predicted = lda_predictions$class, Actual = student$pass[-train])
+print(confusion_matrix_)
+
+# Accuracy
+lda_accuracy <- mean(lda_predictions$class == student$pass[-train])
+cat("LDA Model Accuracy:", lda_accuracy, "\n")
+
+
+#New model - more cluster
+student <- student %>%
+  mutate(grade = case_when(
+    math.score >= 90 ~ "HighGrade",
+    math.score >= 75 & math.score < 90 ~ "MediumGrade",
+    math.score >= 50 & math.score < 75 ~ "LowGrade",
+    TRUE ~ "Fail"
+  ))
+lda_model1 <- lda(grade ~ . -math.score -reading.score -writing.score -pass, 
+                  data = student, subset = train)
+
+lda_predictions <- predict(lda_model1, newdata = student[-train,])
+
+confusion_matrix1 <- table(Predicted = lda_predictions$class, Actual = student$grade[-train])
+
+print(confusion_matrix1)
+
+#Accuracy
+lda_accuracy <- mean(lda_predictions$class == student$grade[-train])
+cat("LDA Model Accuracy:", lda_accuracy, "\n")
+
+#Precision
+precision <- confusion_matrix1[2,2] / sum(confusion_matrix1[2,])
+precision
+
+#Recall
+recall <- confusion_matrix1[2,2] / sum(confusion_matrix1[,2])
+recall
+
+#F1
+F1_score <- 2 * (precision * recall) / (precision + recall)
+F1_score
+
+
+#Dataframe
+plot_data <- data.frame(label = student$grade[-train], 
+                        LD1 = lda_predictions$x[,1], 
+                        LD2 = lda_predictions$x[,2])  # Se esiste LD2
+
+#One discriminant
+ggplot(plot_data, aes(x = LD2, colour = label)) + 
+  geom_density() + 
+  labs(title = "LDA Projection (LD1)", x = "Linear Discriminant 1", y = "Density") +
+  theme_minimal()
+ggplot(plot_data, aes(x = LD1, colour = label)) + 
+  geom_density() + 
+  labs(title = "LDA Projection (LD1)", x = "Linear Discriminant 1", y = "Density") +
+  theme_minimal()
+
+#Two discriminant
+ggplot(plot_data, aes(x = LD1, y = LD2, colour = label)) + 
+  geom_point() + 
+  labs(title = "LDA Projection", x = "Linear Discriminant 1 (LD1)", y = "Linear Discriminant 2 (LD2)") +
+  theme_minimal()
+

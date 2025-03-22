@@ -1,32 +1,14 @@
----
-Title: Clustering model
-Author: Campregher Sofia
-Source: https://www.kaggle.com/datasets/spscientist/students-performance-in-exams/data
+#---
+#  Title: Clustering model
+#  Author: Campregher Sofia
+# Source: https://www.kaggle.com/datasets/spscientist/students-performance-in-exams/data
 
----
-
-install.packages("tidyverse")
-library(tidyverse)
-install.packages("ggplot2")
-library(ggplot2)
-install.packages("psych")
-library(psych)
-install.packages("knitr")
-library(knitr)
-installed.packages()["factoextra", ]
-library(factoextra)
-install.packages("dplyr")
-library(dplyr)
-install.packages("ggcorrplot")
-library(ggcorrplot)
-install.packages("reader")
-library(reader)
-install.packages("fossil")
-library(fossil)
+#---
 
 
-## 1 - Data Preparation 
-  
+###
+#1 - Data Preparation 
+###
 
 file_path <- file.choose()
 data <- read.csv(file_path)
@@ -42,12 +24,14 @@ sum(duplicated(data))
 
 numeric_cols <- c("math.score", "reading.score", "writing.score")
 
+summary(data)
+
 for (col in numeric_cols) {
   Q1 <- quantile(data[[col]], 0.25, na.rm = TRUE)
   Q3 <- quantile(data[[col]], 0.75, na.rm = TRUE)
   IQR_value <- Q3 - Q1
   
-  cat("\nColonna:", col, "\nQ1:", Q1, "\nQ3:", Q3, "\nIQR:", IQR_value, "\n")
+  cat("\nColumn:", col, "\nQ1:", Q1, "\nQ3:", Q3, "\nIQR:", IQR_value, "\n")
   cat("Pre-row:", nrow(data), "\n")
   
   data <- data[data[[col]] >= (Q1 - 1.5 * IQR_value) & 
@@ -58,10 +42,13 @@ for (col in numeric_cols) {
 
 summary(data)
 
-colnames(data)
 
+###
+# 2 - Data visualization
+###
 
-## 2 - Data visualization
+if (!requireNamespace("dplyr", quietly = TRUE)) {install.packages("dplyr")}
+library(dplyr)
 
 data%>%head()
 
@@ -77,6 +64,8 @@ table(data$test.preparation.course)
 table(data$lunch)
 
 # 2.b - Data distribution overview
+if (!requireNamespace("ggplot2", quietly = TRUE)) {install.packages("ggplot2")}
+library(ggplot2)
 
 # Histogram - Math Score
 ggplot(data, aes(x =math.score)) +
@@ -154,21 +143,45 @@ table(data$race.ethnicity)
 race.ethnicity80 <- data %>% 
   group_by(race.ethnicity) %>%
   filter(math.score > 80, writing.score > 80, reading.score > 80) 
-table(x1$race.ethnicity)
-race.ethnicity80 %>% ggplot() + geom_bar(aes(x1$race.ethnicity,fill = x1$race.ethnicity))
+table(race.ethnicity80$race.ethnicity)
+
+race.ethnicity80 %>%
+  ggplot(aes(x = race.ethnicity, fill = race.ethnicity)) +
+  geom_bar() +
+  labs(
+    title = "High-Scoring Students by Ethnicity",
+    x = "Ethnicity",
+    y = "Count",
+    fill = "Ethnicity"
+  ) +
+  theme_minimal()
+
 
 #Reading - Writing - Maths score divided by gender
 girl_data<-data%>%filter(gender=='female')
 boy_data<-data%>%filter(gender=='male')
+
 ggplot()+
   geom_point(girl_data,mapping=aes(`math.score`,`reading.score`,color='female'))+
-  geom_point(boy_data,mapping=aes(`math.score`,`reading.score`,color='male'))+labs(title='Math and Reading Score')
+  geom_point(boy_data,mapping=aes(`math.score`,`reading.score`,color='male'))+
+  labs(title='Math and Reading Score',
+       x = "Math Score", 
+       y = "Reading Score")
 ggplot()+
   geom_point(girl_data,mapping=aes(`math.score`,`writing.score`,color='female'))+
-  geom_point(boy_data,mapping = aes(`math.score`,`writing.score`,color='male'))+labs(title='Math and Writing Score')
+  geom_point(boy_data,mapping = aes(`math.score`,`writing.score`,color='male'))+
+  labs(title='Math and Writing Score',
+       x = "Math Score", 
+       y = "Writing Score")
 ggplot()+
   geom_point(girl_data,mapping=aes(`reading.score`,`writing.score`,color='female'))+
-  geom_point(boy_data,mapping = aes(`reading.score`,`writing.score`,color='male'))+labs(title='Reading and Writing Score')
+  geom_point(boy_data,mapping = aes(`reading.score`,`writing.score`,color='male'))+
+  labs(title='Reading and Writing Score',
+       x = "Reading Score", 
+       y = "Writing Score")
+
+if (!requireNamespace("psych", quietly = TRUE)) {install.packages("psych")}
+library(psych)
 
 pairs.panels(data[, 6:8],
              method = "pearson",  
@@ -178,28 +191,32 @@ pairs.panels(data[, 6:8],
              lm = TRUE            
 )
 
-
-## 3 - Data clusering 
-
+###
+# 3 - Data clusering 
+###
 
 # 3.a - Optimal number of cluster - Elbow method
+if (!requireNamespace("factoextra", quietly = TRUE)) {install.packages("factoextra")}
+library(factoextra)
+if (!requireNamespace("cluster", quietly = TRUE)) {install.packages("cluster")}
+library(cluster)
 
 data_scaled <- scale(data[, numeric_cols])
 set.seed(123)
 fviz_nbclust(data_scaled, kmeans, method = "wss") +
   geom_vline(xintercept = 4, linetype = 2) +
   labs(subtitle = "Elbow Method")
-k <- 5 
+k <- 4 
 
 set.seed(123)
 gap_stat <- clusGap(data_scaled, FUN = kmeans, K.max = 5, B = 50)
 fviz_gap_stat(gap_stat)
 
 set.seed(123)
-km_result <- kmeans(data_scaled, centers = k, nstart = 25)
-print(kmeans_result$centers)
-data$Cluster <- as.factor(km_result$cluster)
-fviz_cluster(km_result, data = data_scaled, 
+k_result <- kmeans(data_scaled, centers = k, nstart = 25)
+print(k_result$centers)
+data$Cluster <- as.factor(k_result$cluster)
+fviz_cluster(k_result, data = data_scaled, 
              geom = "point", ellipse.type = "norm",
              palette = "jco", ggtheme = theme_minimal())
 cluster_summary <- data %>%
@@ -212,6 +229,8 @@ cluster_summary <- data %>%
   )
 print(cluster_summary)
 head(data)
+
+# 3.b - Cluster Visualization
 
 #Math Score vs Reading Score
 ggplot(data, aes(x = math.score, y = reading.score, color = Cluster)) +
@@ -237,10 +256,28 @@ ggplot(data, aes(x = reading.score, y = writing.score, color = Cluster)) +
        x = "Reading Score", y = "Writing Score") +
   theme_minimal()
 
-
-fviz_silhouette(silhouette(kmeans_result$cluster, dist(scaled_data)))
+#Silhouette
+fviz_silhouette(silhouette(k_result$cluster, dist(data_scaled)))
 table(data$Cluster, data$`test.preparation.course`)
+library(ggplot2)
 
+#TestPrep by cluster
+ggplot(data, aes(x = Cluster, fill = `test.preparation.course`)) +
+  geom_bar(position = "dodge") +
+  labs(
+    title = "Test Preparation Course by Cluster",
+    x = "Cluster",
+    y = "Number of Students",
+    fill = "Test Prep"
+  ) +
+  theme_minimal()
+#Average score by cluster
+data %>%
+  group_by(Cluster, `test.preparation.course`) %>%
+  summarise(across(c(math.score, reading.score, writing.score), mean), .groups = "drop")
+
+
+#Distribution by Cluster
 ggplot(data, aes(x = Cluster, y = math.score, fill = Cluster)) +
   geom_boxplot() +
   theme_minimal() +
@@ -256,16 +293,15 @@ ggplot(data, aes(x = Cluster, y = writing.score, fill = Cluster)) +
   theme_minimal() +
   labs(title = "Writing Score Distribution by Cluster", x = "Cluster", y = "Writing Score")
 
+# 3.c - Comparision btw Ethnicity&KMeans
 install.packages("fossil")
 library(fossil)
-
-#Comparision btw Ethnicity&KMeans
 rand_index <- rand.index(as.integer(data$Cluster), as.integer(as.factor(data$race.ethnicity)))
 print(paste("Rand Index:", round(rand_index, 3)))
 
-
-## 4 - Central point
-
+###
+# 4 - Central point
+###
 
 # 4.a - Mean computation
 
@@ -359,4 +395,3 @@ ggplot(subset_data, aes(x = `writing.score`, y = `reading.score`, color = as.fac
        x = "Writing Score", y = "Reading Score") +
   theme_minimal() +
   theme(legend.position = "right")
-  

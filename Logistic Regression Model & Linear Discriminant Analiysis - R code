@@ -13,14 +13,7 @@
 file_path <- file.choose()
 data <- read.csv(file_path)
 
-# 1.a - Data cleaning
-
-colSums(is.na(data))
-data[!complete.cases(data), ]
-sum(is.na(data))
-sum(duplicated(data))
-
-# 1.b - Outlier elimination 
+# 1.a - Outlier elimination 
 
 numeric_cols <- c("math.score", "reading.score", "writing.score")
 
@@ -42,29 +35,38 @@ for (col in numeric_cols) {
 
 summary(data)
 
-##Logistic regression
 
+###
+#1 - Logistic regression Analiysis
+###
+
+
+# 1.a - Logistic regression model
+
+if (!requireNamespace("dplyr", quietly = TRUE)) {install.packages("dplyr")}
+library(dplyr)
+if (!requireNamespace("ggplot2", quietly = TRUE)) {install.packages("ggplot2")}
+library(ggplot2)
 par(mfrow = c(1,1))
 par(mar = c(5, 4, 4, 2) + 0.1)
-library(dplyr)
-library(ggplot2)
 
-data_ <- data[, !(names(data) %in% c("Gender", "Ethnicity", "ParentEd", "Lunch", "TPrep"))]
 student <- data_ %>% mutate(pass = ifelse(math.score > 60,1,0) %>% as.factor())
 head(student)
 
 set.seed(1)
 train <- sample(1:nrow(student),nrow(student)*.9,rep = F)
-lr.model <- glm(pass ~ . -math.score - reading.score - writing.score,data = student, family = binomial,subset = train)
-summary(lr.model)
+lr_model <- glm(pass ~ . -math.score - reading.score - writing.score,data = student, family = binomial,subset = train)
+summary(lr_model)
 
-#Predictor vectors - Confusion
-probabilities <- predict(lr.model, newdata = student[-train, ], type = "response")
+# 1.b - Evaluation of predictor vectors
+
+# Confusion
+probabilities <- predict(lr_model, newdata = student[-train, ], type = "response")
 predictions <- ifelse(probabilities > 0.5, 1, 0)
 confusion_matrix <- table(Predicted = predictions, Actual = student$pass[-train])
 print(confusion_matrix)
 
-#Probability distribution
+# Probability distribution
 ggplot(data.frame(Probability = probabilities, Pass = as.factor(student$pass[-train])),
        aes(x = Probability, fill = Pass)) +
   geom_histogram(alpha = 0.6, bins = 30, position = "identity") +
@@ -73,67 +75,100 @@ ggplot(data.frame(Probability = probabilities, Pass = as.factor(student$pass[-tr
        y = "Frequency") +
   theme_minimal()
 
-#Accuracy
+# Accuracy
 test <- setdiff(1:nrow(student), train)
-pred <- predict(lr.model, newdata = student[test, ], type = "response")
+pred <- predict(lr_model, newdata = student[test, ], type = "response")
 pred_class <- ifelse(pred > 0.5, 1, 0)
 mean(pred_class == student$pass[test])
 
-#Precision
+# Precision
 precision <- confusion_matrix[2,2] / sum(confusion_matrix[2,])
 precision
 
-#Recall
+# Recall
 recall <- confusion_matrix[2,2] / sum(confusion_matrix[,2])
 recall
 
-#F1
+# F1
 F1_score <- 2 * (precision * recall) / (precision + recall)
 F1_score
 
-#ROC
+# ROC - AUC
+if (!requireNamespace("pROC", quietly = TRUE)) {install.packages("pROC")}
 library(pROC)
+
 roc_curve <- roc(student$pass[test], pred)
 plot(roc_curve, main = "ROC Curve", col = "blue", lwd = 2)
 auc(roc_curve)
 
-
-
-#Overall Accuracy
+# Overall accuracy
 overall_accuracy <- mean(predictions == student$pass[-train])
 cat("Overall Model Accuracy:", overall_accuracy, "\n")
 
-#Missclassification rate
+# Missclassification rate
 misclassification_rate <- mean(predictions != student$pass[-train])
 cat("Misclassification Rate:", misclassification_rate, "\n")
 
-#False Positive Rate
+# False positive rate
 false_positive_rate <- confusion_matrix[2,1] / sum(confusion_matrix[,1])
 cat("False Positive Rate:", false_positive_rate, "\n")
 
-# False Negative Rate
+# False negative rate
 false_negative_rate <- confusion_matrix[1,2] / sum(confusion_matrix[,2])
 cat("False Negative Rate:", false_negative_rate, "\n")
 
 
-##Linear Discriminant Analiysis
+##
+#3 - Linear Discriminant Analiysis
+##
 
+
+# 3.a - Linear Discriminant Model
+if (!requireNamespace("MASS", quietly = TRUE)) {install.packages("MASS")}
 library(MASS)
 
-#Model
 lda_model <- lda(pass ~ . -math.score -reading.score -writing.score, 
                  data = student, subset = train)
 
+# 2.b - Evaluation of predictor vectors
+
+# Confusion
 lda_predictions <- predict(lda_model, newdata = student[-train,])
 confusion_matrix_ <- table(Predicted = lda_predictions$class, Actual = student$pass[-train])
 print(confusion_matrix_)
 
 # Accuracy
-lda_accuracy <- mean(lda_predictions$class == student$pass[-train])
+test <- setdiff(1:nrow(student), train)
+lda_pred <- predict(lda_model, newdata = student[test, ])
+lda_class <- lda_pred$class
+lda_accuracy <- mean(lda_class == student$pass[test])
 cat("LDA Model Accuracy:", lda_accuracy, "\n")
 
+# Precision
+precision_ <- confusion_matrix_[2,2] / sum(confusion_matrix_[2,])
+precision_
 
-#New model - more cluster
+# Recall
+recall_ <- confusion_matrix_[2,2] / sum(confusion_matrix_[,2])
+recall_
+
+# F1
+F1_score_ <- 2 * (precision_ * recall_) / (precision_ + recall_)
+F1_score_
+
+# ROC - AUC
+if (!requireNamespace("pROC", quietly = TRUE)) {install.packages("pROC")}
+library(pROC)
+
+colnames(lda_predictions$posterior)  # helpful to confirm
+lda_prob <- lda_predictions$posterior[, "1"]
+roc_curve_ <- roc(student$pass[test], lda_prob)
+plot(roc_curve_, main = "ROC Curve - LDA", col = "blue", lwd = 2)
+auc_score <- auc(roc_curve_)
+cat("AUC:", auc_score, "\n")
+
+# 2.c - New model
+
 student <- student %>%
   mutate(grade = case_when(
     math.score >= 90 ~ "HighGrade",
@@ -141,38 +176,40 @@ student <- student %>%
     math.score >= 50 & math.score < 75 ~ "LowGrade",
     TRUE ~ "Fail"
   ))
+
 lda_model1 <- lda(grade ~ . -math.score -reading.score -writing.score -pass, 
                   data = student, subset = train)
 
-lda_predictions <- predict(lda_model1, newdata = student[-train,])
+# 2.d - Evaluation of predictor vectors & visulizaition
 
+# Confusion
+lda_predictions1 <- predict(lda_model1, newdata = student[-train,])
 confusion_matrix1 <- table(Predicted = lda_predictions$class, Actual = student$grade[-train])
-
 print(confusion_matrix1)
 
-#Accuracy
-lda_accuracy <- mean(lda_predictions$class == student$grade[-train])
-cat("LDA Model Accuracy:", lda_accuracy, "\n")
+# Accuracy
+lda_accuracy1 <- mean(lda_predictions1$class == student$grade[-train])
+cat("LDA Model Accuracy:", lda_accuracy1, "\n")
 
-#Precision
-precision <- confusion_matrix1[2,2] / sum(confusion_matrix1[2,])
-precision
+# Precision
+precision1 <- confusion_matrix1[2,2] / sum(confusion_matrix1[2,])
+precision1
 
-#Recall
-recall <- confusion_matrix1[2,2] / sum(confusion_matrix1[,2])
-recall
+# Recall
+recall1 <- confusion_matrix1[2,2] / sum(confusion_matrix1[,2])
+recall1
 
-#F1
-F1_score <- 2 * (precision * recall) / (precision + recall)
-F1_score
+# F1
+F1_score1 <- 2 * (precision1 * recall1) / (precision1 + recall1)
+F1_score1
 
 
-#Dataframe
+# Dataframe
 plot_data <- data.frame(label = student$grade[-train], 
                         LD1 = lda_predictions$x[,1], 
                         LD2 = lda_predictions$x[,2])  # Se esiste LD2
 
-#One discriminant
+# One discriminant
 ggplot(plot_data, aes(x = LD2, colour = label)) + 
   geom_density() + 
   labs(title = "LDA Projection (LD1)", x = "Linear Discriminant 1", y = "Density") +
@@ -182,9 +219,8 @@ ggplot(plot_data, aes(x = LD1, colour = label)) +
   labs(title = "LDA Projection (LD1)", x = "Linear Discriminant 1", y = "Density") +
   theme_minimal()
 
-#Two discriminant
+# Two discriminant
 ggplot(plot_data, aes(x = LD1, y = LD2, colour = label)) + 
   geom_point() + 
   labs(title = "LDA Projection", x = "Linear Discriminant 1 (LD1)", y = "Linear Discriminant 2 (LD2)") +
   theme_minimal()
-

@@ -1,3 +1,47 @@
+#---
+#  Title: Logistic Regression Model & LDA
+#  Author: Campregher Sofia
+# Source: https://www.kaggle.com/datasets/spscientist/students-performance-in-exams/data
+
+#---
+
+
+###
+#1 - Data Preparation 
+###
+
+file_path <- file.choose()
+data <- read.csv(file_path)
+
+# 1.a - Data cleaning
+
+colSums(is.na(data))
+data[!complete.cases(data), ]
+sum(is.na(data))
+sum(duplicated(data))
+
+# 1.b - Outlier elimination 
+
+numeric_cols <- c("math.score", "reading.score", "writing.score")
+
+summary(data)
+
+for (col in numeric_cols) {
+  Q1 <- quantile(data[[col]], 0.25, na.rm = TRUE)
+  Q3 <- quantile(data[[col]], 0.75, na.rm = TRUE)
+  IQR_value <- Q3 - Q1
+  
+  cat("\nColumn:", col, "\nQ1:", Q1, "\nQ3:", Q3, "\nIQR:", IQR_value, "\n")
+  cat("Pre-row:", nrow(data), "\n")
+  
+  data <- data[data[[col]] >= (Q1 - 1.5 * IQR_value) & 
+                 data[[col]] <= (Q3 + 1.5 * IQR_value), ]
+  
+  cat("Post-row", nrow(data), "\n")
+}
+
+summary(data)
+
 ##Logistic regression
 
 par(mfrow = c(1,1))

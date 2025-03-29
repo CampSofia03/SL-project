@@ -160,7 +160,7 @@ F1_score_
 if (!requireNamespace("pROC", quietly = TRUE)) {install.packages("pROC")}
 library(pROC)
 
-colnames(lda_predictions$posterior)  # helpful to confirm
+colnames(lda_predictions$posterior)
 lda_prob <- lda_predictions$posterior[, "1"]
 roc_curve_ <- roc(student$pass[test], lda_prob)
 plot(roc_curve_, main = "ROC Curve - LDA", col = "blue", lwd = 2)
@@ -188,7 +188,10 @@ confusion_matrix1 <- table(Predicted = lda_predictions$class, Actual = student$g
 print(confusion_matrix1)
 
 # Accuracy
-lda_accuracy1 <- mean(lda_predictions1$class == student$grade[-train])
+test1 <- setdiff(1:nrow(student), train)
+lda_pred1 <- predict(lda_model1, newdata = student[test, ])
+lda_class1 <- lda_pred1$class
+lda_accuracy1 <- mean(lda_class1 == student$grade[-train])
 cat("LDA Model Accuracy:", lda_accuracy1, "\n")
 
 # Precision
@@ -203,6 +206,30 @@ recall1
 F1_score1 <- 2 * (precision1 * recall1) / (precision1 + recall1)
 F1_score1
 
+# ROC - AUC
+if (!requireNamespace("pROC", quietly = TRUE)) {install.packages("pROC")}
+library(pROC)
+
+colnames(lda_predictions1$posterior)
+lda_prob1 <- lda_predictions1$posterior[, "HighGrade"]
+roc_curve1 <- roc(response = student$grade[test1] == "HighGrade", predictor = lda_prob1)
+plot(roc_curve1, main = "ROC Curve - HighGrade vs Rest", col = "blue", lwd = 2)
+auc(roc_curve1)
+
+lda_prob2 <- lda_predictions1$posterior[, "Fail"]
+roc_curve2 <- roc(response = student$grade[test1] == "HighGrade", predictor = lda_prob2)
+plot(roc_curve2, main = "ROC Curve - Fail vs Rest", col = "blue", lwd = 2)
+auc(roc_curve2)
+
+lda_prob3 <- lda_predictions1$posterior[, "LowGrade"]
+roc_curve3 <- roc(response = student$grade[test1] == "HighGrade", predictor = lda_prob3)
+plot(roc_curve3, main = "ROC Curve - Fail vs Rest", col = "blue", lwd = 2)
+auc(roc_curve3)
+
+lda_prob4 <- lda_predictions1$posterior[, "MediumGrade"]
+roc_curve4 <- roc(response = student$grade[test1] == "HighGrade", predictor = lda_prob4)
+plot(roc_curve4, main = "ROC Curve - Fail vs Rest", col = "blue", lwd = 2)
+auc(roc_curve4)
 
 # Dataframe
 plot_data <- data.frame(label = student$grade[-train], 

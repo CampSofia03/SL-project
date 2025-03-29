@@ -130,7 +130,7 @@ library(MASS)
 lda_model <- lda(pass ~ . -math.score -reading.score -writing.score, 
                  data = student, subset = train)
 
-# 2.b - Evaluation of predictor vectors
+# 3.b - Evaluation of predictor vectors
 
 # Confusion
 lda_predictions <- predict(lda_model, newdata = student[-train,])
@@ -167,7 +167,7 @@ plot(roc_curve_, main = "ROC Curve - LDA", col = "blue", lwd = 2)
 auc_score <- auc(roc_curve_)
 cat("AUC:", auc_score, "\n")
 
-# 2.c - New model
+# 3.c - New model
 
 student <- student %>%
   mutate(grade = case_when(
@@ -180,7 +180,7 @@ student <- student %>%
 lda_model1 <- lda(grade ~ . -math.score -reading.score -writing.score -pass, 
                   data = student, subset = train)
 
-# 2.d - Evaluation of predictor vectors & visulizaition
+# 3.d - Evaluation of predictor vectors & visulizaition
 
 # Confusion
 lda_predictions1 <- predict(lda_model1, newdata = student[-train,])

@@ -13,14 +13,7 @@
 file_path <- file.choose()
 data <- read.csv(file_path)
 
-# 1.a - Data cleaning
-
-colSums(is.na(data))
-data[!complete.cases(data), ]
-sum(is.na(data))
-sum(duplicated(data))
-
-# 1.b - Outlier elimination 
+# 1.a - Outlier elimination 
 
 numeric_cols <- c("math.score", "reading.score", "writing.score")
 

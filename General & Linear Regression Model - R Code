@@ -428,6 +428,9 @@ summary(reg3mr)
 
 # 4. m - Variance Inflation Factor
 
+if (!requireNamespace("car", quietly = TRUE)) {install.packages("car")}
+library(car)
+
 cat("\n--- VIF - Math Score Model* Writing ---\n")
 print(vif(reg1mw))
 
@@ -443,7 +446,7 @@ plot(reg1mw, main = "Diagnostic Plots - Model reg1mw")
 plot(reg2mw, main = "Diagnostic Plots - Model reg2mw")
 plot(reg3mr, main = "Diagnostic Plots - Model reg3mr")
 
-#Model Comparison (?)
+# 4. n - Model Comparison
 anova(reg1m, reg1mw)
 AIC(reg1m, reg1mw)
 BIC(reg1m, reg1mw)

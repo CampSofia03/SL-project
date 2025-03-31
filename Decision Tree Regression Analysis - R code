@@ -1,0 +1,187 @@
+#---
+#  Title: Decision Tree Regression Analysis
+#  Author: Campregher Sofia
+# Source: https://www.kaggle.com/datasets/spscientist/students-performance-in-exams/data
+
+#---
+
+
+###
+#1 - Data Preparation 
+###
+
+file_path <- file.choose()
+data <- read.csv(file_path)
+
+# 1.a - Outlier elimination 
+
+numeric_cols <- c("math.score", "reading.score", "writing.score")
+
+summary(data)
+
+for (col in numeric_cols) {
+  Q1 <- quantile(data[[col]], 0.25, na.rm = TRUE)
+  Q3 <- quantile(data[[col]], 0.75, na.rm = TRUE)
+  IQR_value <- Q3 - Q1
+  
+  cat("\nColumn:", col, "\nQ1:", Q1, "\nQ3:", Q3, "\nIQR:", IQR_value, "\n")
+  cat("Pre-row:", nrow(data), "\n")
+  
+  data <- data[data[[col]] >= (Q1 - 1.5 * IQR_value) & 
+                 data[[col]] <= (Q3 + 1.5 * IQR_value), ]
+  
+  cat("Post-row", nrow(data), "\n")
+}
+
+summary(data)
+
+
+###
+#1 - Decision Tree Regression Analysis
+###
+
+# 1.a - Converting "grade" to numeric
+if (!requireNamespace("dplyr", quietly = TRUE)) {install.packages("dplyr")}
+library(dplyr)
+if (!requireNamespace("rpart", quietly = TRUE)) {install.packages("rpart")}
+library(rpart)
+if (!requireNamespace("rpart.plot", quietly = TRUE)) {install.packages("rpart.plot")}
+library(rpart.plot)
+
+student <- data %>% mutate(pass = ifelse(math.score > 60,1,0) %>% as.factor())
+student <- student %>%
+  mutate(grade = case_when(
+    math.score >= 90 ~ "HighGrade",
+    math.score >= 75 & math.score < 90 ~ "MediumGrade",
+    math.score >= 50 & math.score < 75 ~ "LowGrade",
+    TRUE ~ "Fail"
+  ))
+student <- student %>%
+  mutate(grade_numeric = case_when(
+    grade == "HighGrade" ~ 3,
+    grade == "MediumGrade" ~ 2,
+    grade == "LowGrade" ~ 1,
+    grade == "Fail" ~ 0
+  ))
+head(student)
+
+# 1.b Decision Tree for Math Scores & Writing Scores
+
+set.seed(123)
+train <- sample(1:nrow(student), nrow(student) * 0.9)
+training_math <- student[train, ]
+training_writing <- student[train, ]
+
+dtm = rpart(formula = math.score ~ .,
+            data = training_math,
+            method = "anova");
+
+dtw = rpart(formula = writing.score ~ .,
+            data = training_writing,
+            method = "anova");
+
+par(mfrow = c(1,2))
+prp(dtm, main = "Math Model")
+prp(dtw, main = "Writing Model")
+par(mfrow = c(1,1))
+
+#Complexity parameter
+printcp(dtm)
+printcp(dtw)
+
+# 1.c - Test Set for Math Scores & Writing Scores
+
+test <- setdiff(1:nrow(student), train)
+testing_writing <- student[test, ]
+writing_predictions <- predict(dtw, newdata = testing_writing)
+
+test <- setdiff(1:nrow(student), train)
+testing_math <- student[test, ]
+math_predictions <- predict(dtw, newdata = testing_writing)
+
+# 1.d - Predict on validation/test sets
+
+math_predictions <- as.numeric(math_predictions)
+writing_predictions <- as.numeric(writing_predictions)
+math_predictions <- predict(dtm, newdata = testing_math)
+writing_predictions <- predict(dtw, newdata = testing_writing)
+
+# RMSE
+math_rmse <- sqrt(mean((math_predictions - testing_math$math.score)^2))
+writing_rmse <- sqrt(mean((writing_predictions - testing_writing$writing.score)^2))
+
+cat("Math Model RMSE:", math_rmse, "\n")
+cat("Writing Model RMSE:", writing_rmse, "\n")
+
+# Standard deviation
+math_sd <- sd(testing_math$math.score, na.rm = TRUE)
+writing_sd <- sd(testing_writing$writing.score, na.rm = TRUE)
+
+cat("Math Score Standard Deviation:", math_sd, "\n")
+cat("Writing Score Standard Deviation:", writing_sd, "\n")
+
+prnm = rpart(formula = math.score ~ .,
+             data = training_math,
+             method = "anova", 
+             control =rpart.control(minsplit = 5, cp=0.005));
+prnw = rpart(formula = writing.score ~ .,
+             data = training_writing,
+             method = "anova", 
+             control =rpart.control(minsplit = 5, cp=0.005));
+ocpm = prnm$cptable[which.min(prnm$cptable[,"xerror"]), "CP"];
+ocpw = prnw$cptable[which.min(prnw$cptable[,"xerror"]), "CP"];
+
+
+# Variable importance
+caret::varImp(dtw);
+caret::varImp(dtm)
+
+
+# 1.e - Decision Tree Pruning
+
+if (!requireNamespace("rpart", quietly = TRUE)) {install.packages("rpart")}
+library(rpart)
+if (!requireNamespace("rpart.plot", quietly = TRUE)) {install.packages("rpart.plot")}
+library(rpart.plot)
+
+# Train decision tree models
+math_tree <- rpart(math.score ~ ., data = training_math, method = "anova", 
+                   control = rpart.control(minsplit = 80, cp = 0.0005))
+
+writing_tree <- rpart(writing.score ~ ., data = training_writing, method = "anova", 
+                      control = rpart.control(minsplit = 100, cp = 0.0005))
+
+# Find the optimal complexity parameter (CP) that minimizes cross-validation error
+best_cp_math <- math_tree$cptable[which.min(math_tree$cptable[,"xerror"]), "CP"]
+best_cp_writing <- writing_tree$cptable[which.min(writing_tree$cptable[,"xerror"]), "CP"]
+
+# Prune the trees with the best CP found
+math_tree_pruned <- prune(math_tree, cp = best_cp_math)
+writing_tree_pruned <- prune(writing_tree, cp = best_cp_writing)
+
+# Original tree vs pruned tree
+par(mfrow = c(1,2))
+prp(math_tree, main = "Math Model Before Pruning")
+prp(math_tree_pruned, main = "Math Model After Pruning")
+
+prp(writing_tree, main = "Writing Model Before Pruning")
+prp(writing_tree_pruned, main = "Writing Model After Pruning")
+par(mfrow = c(1,1))  # Reset plotting layout
+
+# 1.f - Generate predictions on the test set using pruned models
+math_pred <- predict(math_tree_pruned, newdata = testing_math)
+writing_pred <- predict(writing_tree_pruned, newdata = testing_writing)
+
+#RMSE
+math_rmse <- sqrt(mean((math_pred - testing_math$math.score)^2))
+writing_rmse <- sqrt(mean((writing_pred - testing_writing$writing.score)^2))
+
+cat("Math Model RMSE After Pruning:", math_rmse, "\n")
+cat("Writing Model RMSE After Pruning:", writing_rmse, "\n")
+
+# Variable importance
+caret::varImp(math_tree);
+caret::varImp(writing_tree)
+caret::varImp(math_tree_pruned);
+caret::varImp(writing_tree_pruned)
+

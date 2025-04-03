@@ -391,7 +391,7 @@ options(repr.plot.width=20, repr.plot.height=7)
 par(mfrow = c(2,2))
 plot(reg1m, main = "Diagnostic Plots - Model reg1m")
 plot(reg2m, main = "Diagnostic Plots - Model reg2m")
-plot(reg2m, main = "Diagnostic Plots - Model reg3m")
+plot(reg3m, main = "Diagnostic Plots - Model reg3m")
 
 # 4.i Model assumption
 

@@ -439,7 +439,3 @@ plot(reg1mw, main = "Diagnostic Plots - Model reg1mw")
 plot(reg2mw, main = "Diagnostic Plots - Model reg2mw")
 plot(reg3mr, main = "Diagnostic Plots - Model reg3mr")
 
-# 4. n - Model Comparison
-anova(reg1m, reg1mw)
-AIC(reg1m, reg1mw)
-BIC(reg1m, reg1mw)

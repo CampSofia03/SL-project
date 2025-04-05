@@ -50,7 +50,7 @@ library(ggplot2)
 par(mfrow = c(1,1))
 par(mar = c(5, 4, 4, 2) + 0.1)
 
-student <- data_ %>% mutate(pass = ifelse(math.score > 60,1,0) %>% as.factor())
+student <- data %>% mutate(pass = ifelse(math.score > 60,1,0) %>% as.factor())
 head(student)
 
 set.seed(1)

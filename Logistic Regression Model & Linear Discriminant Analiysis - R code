@@ -66,15 +66,6 @@ predictions <- ifelse(probabilities > 0.5, 1, 0)
 confusion_matrix <- table(Predicted = predictions, Actual = student$pass[-train])
 print(confusion_matrix)
 
-# Probability distribution
-ggplot(data.frame(Probability = probabilities, Pass = as.factor(student$pass[-train])),
-       aes(x = Probability, fill = Pass)) +
-  geom_histogram(alpha = 0.6, bins = 30, position = "identity") +
-  labs(title = "Probability distribution - LR",
-       x = "Predicted Probability",
-       y = "Frequency") +
-  theme_minimal()
-
 # Accuracy
 test <- setdiff(1:nrow(student), train)
 pred <- predict(lr_model, newdata = student[test, ], type = "response")
@@ -93,21 +84,13 @@ recall
 F1_score <- 2 * (precision * recall) / (precision + recall)
 F1_score
 
-# ROC - AUC
-if (!requireNamespace("pROC", quietly = TRUE)) {install.packages("pROC")}
-library(pROC)
+# Specificity
+specificity <- confusion_matrix[1,1] / sum(confusion_matrix[,1])
+specificity
 
-roc_curve <- roc(student$pass[test], pred)
-plot(roc_curve, main = "ROC Curve", col = "blue", lwd = 2)
-auc(roc_curve)
-
-# Overall accuracy
-overall_accuracy <- mean(predictions == student$pass[-train])
-cat("Overall Model Accuracy:", overall_accuracy, "\n")
-
-# Missclassification rate
-misclassification_rate <- mean(predictions != student$pass[-train])
-cat("Misclassification Rate:", misclassification_rate, "\n")
+# Misclassification rate
+misclascification_rate <- mean(predictions != student$pass[-train])
+cat("Misclasification Rate:", misclascification_rate, "\n")
 
 # False positive rate
 false_positive_rate <- confusion_matrix[2,1] / sum(confusion_matrix[,1])
@@ -116,6 +99,24 @@ cat("False Positive Rate:", false_positive_rate, "\n")
 # False negative rate
 false_negative_rate <- confusion_matrix[1,2] / sum(confusion_matrix[,2])
 cat("False Negative Rate:", false_negative_rate, "\n")
+
+# Probability distribution
+ggplot(data.frame(Probability = probabilities, Pass = as.factor(student$pass[-train])),
+       aes(x = Probability, fill = Pass)) +
+  geom_histogram(alpha = 0.6, bins = 30, position = "identity") +
+  labs(title = "Probability distribution - LR",
+       x = "Predicted Probability",
+       y = "Frequency") +
+  theme_minimal()
+
+# ROC - AUC
+if (!requireNamespace("pROC", quietly = TRUE)) {install.packages("pROC")}
+library(pROC)
+
+roc_curve <- roc(student$pass[test], pred)
+plot(roc_curve, main = "ROC Curve", col = "blue", lwd = 2)
+auc(roc_curve)
+
 
 
 ##
@@ -129,6 +130,7 @@ library(MASS)
 
 lda_model <- lda(pass ~ . -math.score -reading.score -writing.score, 
                  data = student, subset = train)
+
 
 # 3.b - Evaluation of predictor vectors
 
@@ -155,6 +157,22 @@ recall_
 # F1
 F1_score_ <- 2 * (precision_ * recall_) / (precision_ + recall_)
 F1_score_
+
+# Specificity
+specificity <- confusion_matrix_[1,1] / sum(confusion_matrix_[,1])
+specificity
+
+# Misclassification rate
+misclassification_rate_ <- mean(lda_predictions$class != student$pass[-train])
+cat("Misclassification Rate:", misclassification_rate_, "\n")
+
+# False positive rate
+false_positive_rate <- confusion_matrix_[2,1] / sum(confusion_matrix_[,1])
+cat("False Positive Rate:", false_positive_rate, "\n")
+
+# False negative rate
+false_negative_rate <- confusion_matrix_[1,2] / sum(confusion_matrix_[,2])
+cat("False Negative Rate:", false_negative_rate, "\n")
 
 # ROC - AUC
 if (!requireNamespace("pROC", quietly = TRUE)) {install.packages("pROC")}
@@ -206,6 +224,22 @@ recall1
 F1_score1 <- 2 * (precision1 * recall1) / (precision1 + recall1)
 F1_score1
 
+# Specificity
+specificity <- confusion_matrix1[1,1] / sum(confusion_matrix1[,1])
+specificity
+
+# Misclassification rate
+misclassification_rate1 <- mean(lda_predictions1$class != student$grade[-train])
+cat("Misclassification Rate:", misclassification_rate1, "\n")
+
+# False positive rate
+false_positive_rate1 <- confusion_matrix1[2,1] / sum(confusion_matrix1[,1])
+cat("False Positive Rate:", false_positive_rate1, "\n")
+
+# False negative rate
+false_negative_rate1 <- confusion_matrix1[1,2] / sum(confusion_matrix1[,2])
+cat("False Negative Rate:", false_negative_rate1, "\n")
+
 # ROC - AUC
 if (!requireNamespace("pROC", quietly = TRUE)) {install.packages("pROC")}
 library(pROC)
@@ -217,37 +251,27 @@ plot(roc_curve1, main = "ROC Curve - HighGrade vs Rest", col = "blue", lwd = 2)
 auc(roc_curve1)
 
 lda_prob2 <- lda_predictions1$posterior[, "Fail"]
-roc_curve2 <- roc(response = student$grade[test1] == "HighGrade", predictor = lda_prob2)
+roc_curve2 <- roc(response = student$grade[test1] == "Fail", predictor = lda_prob2)
 plot(roc_curve2, main = "ROC Curve - Fail vs Rest", col = "blue", lwd = 2)
 auc(roc_curve2)
 
 lda_prob3 <- lda_predictions1$posterior[, "LowGrade"]
-roc_curve3 <- roc(response = student$grade[test1] == "HighGrade", predictor = lda_prob3)
-plot(roc_curve3, main = "ROC Curve - Fail vs Rest", col = "blue", lwd = 2)
+roc_curve3 <- roc(response = student$grade[test1] == "LowGrade", predictor = lda_prob3)
+plot(roc_curve3, main = "ROC Curve - LowGrade vs Rest", col = "blue", lwd = 2)
 auc(roc_curve3)
 
 lda_prob4 <- lda_predictions1$posterior[, "MediumGrade"]
-roc_curve4 <- roc(response = student$grade[test1] == "HighGrade", predictor = lda_prob4)
-plot(roc_curve4, main = "ROC Curve - Fail vs Rest", col = "blue", lwd = 2)
+roc_curve4 <- roc(response = student$grade[test1] == "MediumGrade", predictor = lda_prob4)
+plot(roc_curve4, main = "ROC Curve - MediumGrade vs Rest", col = "blue", lwd = 2)
 auc(roc_curve4)
 
 # Dataframe
 plot_data <- data.frame(label = student$grade[-train], 
-                        LD1 = lda_predictions$x[,1], 
-                        LD2 = lda_predictions$x[,2])  # Se esiste LD2
+                        LD1 = lda_predictions$x[,1])
+
 
 # One discriminant
-ggplot(plot_data, aes(x = LD2, colour = label)) + 
-  geom_density() + 
-  labs(title = "LDA Projection (LD1)", x = "Linear Discriminant 1", y = "Density") +
-  theme_minimal()
 ggplot(plot_data, aes(x = LD1, colour = label)) + 
   geom_density() + 
   labs(title = "LDA Projection (LD1)", x = "Linear Discriminant 1", y = "Density") +
-  theme_minimal()
-
-# Two discriminant
-ggplot(plot_data, aes(x = LD1, y = LD2, colour = label)) + 
-  geom_point() + 
-  labs(title = "LDA Projection", x = "Linear Discriminant 1 (LD1)", y = "Linear Discriminant 2 (LD2)") +
   theme_minimal()

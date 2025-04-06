@@ -92,19 +92,12 @@ printcp(dtw)
 # 1.c - Test Set for Math Scores & Writing Scores
 
 test <- setdiff(1:nrow(student), train)
-testing_writing <- student[test, ]
-writing_predictions <- predict(dtw, newdata = testing_writing)
-
-test <- setdiff(1:nrow(student), train)
-testing_math <- student[test, ]
-math_predictions <- predict(dtw, newdata = testing_writing)
+testing_data <- student[test, ]
 
 # 1.d - Predict on validation/test sets
 
-math_predictions <- as.numeric(math_predictions)
-writing_predictions <- as.numeric(writing_predictions)
-math_predictions <- predict(dtm, newdata = testing_math)
-writing_predictions <- predict(dtw, newdata = testing_writing)
+math_predictions <- predict(dtm, newdata = testing_data)
+writing_predictions <- predict(dtw, newdata = testing_data)
 
 # RMSE
 math_rmse <- sqrt(mean((math_predictions - testing_math$math.score)^2))
@@ -113,6 +106,19 @@ writing_rmse <- sqrt(mean((writing_predictions - testing_writing$writing.score)^
 cat("Math Model RMSE:", math_rmse, "\n")
 cat("Writing Model RMSE:", writing_rmse, "\n")
 
+# Actual vs predicted
+plot(testing_data$math.score, math_predictions,
+     main = "Math Score: Actual vs Predicted",
+     xlab = "Actual Math Score", ylab = "Predicted Math Score",
+     col = "blue", pch = 19)
+abline(0, 1, col = "red", lwd = 2)
+
+plot(testing_data$writing.score, writing_predictions,
+     main = "Writing Score: Actual vs Predicted",
+     xlab = "Actual Writing Score", ylab = "Predicted Writing Score",
+     col = "darkgreen", pch = 19)
+abline(0, 1, col = "red", lwd = 2)
+
 # Standard deviation
 math_sd <- sd(testing_math$math.score, na.rm = TRUE)
 writing_sd <- sd(testing_writing$writing.score, na.rm = TRUE)
@@ -120,6 +126,11 @@ writing_sd <- sd(testing_writing$writing.score, na.rm = TRUE)
 cat("Math Score Standard Deviation:", math_sd, "\n")
 cat("Writing Score Standard Deviation:", writing_sd, "\n")
 
+# Variable importance
+caret::varImp(dtw)
+caret::varImp(dtm)
+
+# Retrain cp= 0.005
 prnm = rpart(formula = math.score ~ .,
              data = training_math,
              method = "anova", 
@@ -128,13 +139,10 @@ prnw = rpart(formula = writing.score ~ .,
              data = training_writing,
              method = "anova", 
              control =rpart.control(minsplit = 5, cp=0.005));
+
 ocpm = prnm$cptable[which.min(prnm$cptable[,"xerror"]), "CP"];
 ocpw = prnw$cptable[which.min(prnw$cptable[,"xerror"]), "CP"];
 
-
-# Variable importance
-caret::varImp(dtw);
-caret::varImp(dtm)
 
 
 # 1.e - Decision Tree Pruning
@@ -149,7 +157,7 @@ math_tree <- rpart(math.score ~ ., data = training_math, method = "anova",
                    control = rpart.control(minsplit = 80, cp = 0.0005))
 
 writing_tree <- rpart(writing.score ~ ., data = training_writing, method = "anova", 
-                      control = rpart.control(minsplit = 100, cp = 0.0005))
+                      control = rpart.control(minsplit = 120, cp = 0.0005))
 
 # Find the optimal complexity parameter (CP) that minimizes cross-validation error
 best_cp_math <- math_tree$cptable[which.min(math_tree$cptable[,"xerror"]), "CP"]
@@ -166,7 +174,7 @@ prp(math_tree_pruned, main = "Math Model After Pruning")
 
 prp(writing_tree, main = "Writing Model Before Pruning")
 prp(writing_tree_pruned, main = "Writing Model After Pruning")
-par(mfrow = c(1,1))  # Reset plotting layout
+par(mfrow = c(1,1)) 
 
 # 1.f - Generate predictions on the test set using pruned models
 math_pred <- predict(math_tree_pruned, newdata = testing_math)
@@ -180,8 +188,7 @@ cat("Math Model RMSE After Pruning:", math_rmse, "\n")
 cat("Writing Model RMSE After Pruning:", writing_rmse, "\n")
 
 # Variable importance
-caret::varImp(math_tree);
+caret::varImp(math_tree)
+caret::varImp(math_tree_pruned)
 caret::varImp(writing_tree)
-caret::varImp(math_tree_pruned);
 caret::varImp(writing_tree_pruned)
-
